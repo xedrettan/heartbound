@@ -26,6 +26,7 @@ let localSpaceData = null;
 let localLovesHates = [];
 let localMemories = [];
 let localEvents = [];
+let isLoggedOut = false; // Guard flag to prevent auto-login after logout
 
 let activeTabType = "love";       // "love" | "hate"
 let activeCategoryFilter = "all";  // "all" | "Food" | "Gifts" | ...
@@ -63,6 +64,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   // Parse invite URL search parameters if any
   checkForInviteLink();
+  
+  // Clean up any logout redirect query params
+  if (window.location.search) {
+    const cleanUrl = window.location.origin + window.location.pathname;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
   
   // Connect database logic
   db.initConnection(handleConnectionStatusChange);
@@ -185,6 +192,12 @@ function checkForInviteLink() {
 }
 
 function checkOnboarding(isCloud = false) {
+  // If user just logged out, always show onboarding
+  if (isLoggedOut) {
+    showOnboardingScreen();
+    return;
+  }
+  
   const onboardingModal = document.getElementById("modal-onboarding");
   let hasProfile = false;
 
@@ -195,7 +208,7 @@ function checkOnboarding(isCloud = false) {
   }
 
   if (!hasProfile) {
-    onboardingModal.classList.remove("hidden");
+    showOnboardingScreen();
   } else {
     onboardingModal.classList.add("hidden");
     if (!isCloud) {
@@ -204,8 +217,81 @@ function checkOnboarding(isCloud = false) {
   }
 }
 
+// Centralized function to show onboarding and reset UI to clean state
+function showOnboardingScreen() {
+  const onboardingModal = document.getElementById("modal-onboarding");
+  const formOnboarding = document.getElementById("form-onboarding");
+  const panelJoinSpace = document.getElementById("panel-join-space");
+  const onboardTabs = document.getElementById("onboard-tabs");
+  const formPartnerSetup = document.getElementById("form-partner-setup");
+  
+  // Reset onboarding to default "New Space" tab view
+  if (onboardTabs) onboardTabs.classList.remove("hidden");
+  if (formOnboarding) formOnboarding.classList.remove("hidden");
+  if (panelJoinSpace) panelJoinSpace.classList.add("hidden");
+  if (formPartnerSetup) formPartnerSetup.classList.add("hidden");
+  
+  // Show the modal
+  onboardingModal.classList.remove("hidden");
+}
+
+// Complete logout: wipe everything and show onboarding WITHOUT page reload
+function performLogout() {
+  // 1. Set guard flag so no async callback can re-hide onboarding
+  isLoggedOut = true;
+  
+  // 2. Stop all real-time Firebase/Supabase listeners
+  db.unsubscribeAll();
+  
+  // 3. Nuclear clear: remove ALL heartbound localStorage keys
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("hb_")) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+  
+  // 4. Reset the database module's in-memory state
+  db.dbConfig = null;
+  db.activeSpaceId = null;
+  db.firestore = null;
+  db.firebaseApp = null;
+  db.supabaseClient = null;
+  
+  // 5. Reset all in-memory app data
+  localSpaceData = null;
+  localLovesHates = [];
+  localMemories = [];
+  localEvents = [];
+  
+  // 6. Hide ALL modals
+  document.querySelectorAll(".modal-overlay").forEach(m => m.classList.add("hidden"));
+  
+  // 7. Reset dashboard UI elements to defaults
+  document.getElementById("nav-user-avatar").innerText = "👤";
+  document.getElementById("nav-partner-avatar").innerText = "💖";
+  document.getElementById("nav-couple-names").innerText = "Alex & Taylor";
+  document.getElementById("nav-days-badge").innerText = "Not Paired";
+  document.getElementById("hero-greeting").innerText = "Hello, Alex";
+  document.getElementById("hero-partner-name").innerText = "Taylor";
+  document.getElementById("dash-days-together").innerText = "--";
+  document.getElementById("countdown-days").innerText = "--";
+  document.getElementById("countdown-event-title").innerText = "No Upcoming Milestone";
+  document.getElementById("countdown-event-date").innerText = "Schedule a celebration in Adventures!";
+  
+  // 8. Show the onboarding screen
+  showOnboardingScreen();
+  
+  console.log("Logout complete — all state cleared, onboarding visible.");
+}
+
 // Setup listeners (for either Firestore or LocalStorage changes)
 function setupRealtimeSubscriptions() {
+  // Clear logout guard when user successfully logs back in
+  isLoggedOut = false;
+  
   // 1. Profile / Milestone info
   db.subscribeSpaceInfo((profile) => {
     localSpaceData = profile;
@@ -1186,17 +1272,7 @@ function initSettingsAndForms() {
   if (btnLogout) {
     btnLogout.addEventListener("click", () => {
       if (confirm("Are you sure you want to log out from this space? You will need your Sync Code to rejoin.")) {
-        // Stop all real-time listeners first
-        db.unsubscribeAll();
-        
-        // Wipe local storage thoroughly
-        localStorage.removeItem("hb_db_config");
-        localStorage.removeItem("hb_space_id");
-        localStorage.removeItem("hb_sandbox_profile");
-        localStorage.removeItem("hb_user_role");
-        
-        // Redirect to a guaranteed clean URL to prevent any cache/state issues
-        window.location.href = window.location.pathname + "?t=" + new Date().getTime();
+        performLogout();
       }
     });
   }
