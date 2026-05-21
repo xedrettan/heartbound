@@ -334,9 +334,15 @@
           <input type="date" id="onboard-anniversary" required>
         </div>
 
-        <div class="form-group">
-          <label for="onboard-partner-birthday">Their Birthday</label>
-          <input type="date" id="onboard-partner-birthday" required>
+        <div class="form-row-split">
+          <div class="form-group">
+            <label for="onboard-user-birthday">Your Birthday</label>
+            <input type="date" id="onboard-user-birthday" required>
+          </div>
+          <div class="form-group">
+            <label for="onboard-partner-birthday">Their Birthday</label>
+            <input type="date" id="onboard-partner-birthday" required>
+          </div>
         </div>
 
         <button type="submit" class="btn-primary btn-block">Enter Our Space ✨</button>
@@ -665,9 +671,15 @@
           <input type="date" id="settings-anniversary" required>
         </div>
 
-        <div class="form-group">
-          <label for="settings-partner-birthday">Their Birthday</label>
-          <input type="date" id="settings-partner-birthday" required>
+        <div class="form-row-split">
+          <div class="form-group">
+            <label for="settings-user-birthday">Your Birthday</label>
+            <input type="date" id="settings-user-birthday" required>
+          </div>
+          <div class="form-group">
+            <label for="settings-partner-birthday">Their Birthday</label>
+            <input type="date" id="settings-partner-birthday" required>
+          </div>
         </div>
 
         <button type="submit" class="btn-primary btn-block">Update Settings ⚙️</button>
@@ -678,7 +690,7 @@
   <!-- Core App Libraries -->
   <!-- We load Firebase JS SDK modularly or globally via web scripts. 
        Using the CDN modules below ensures we have everything needed. -->
-  <script src="database.js?v=7" type="module"></script>
-  <script src="app.js?v=7" type="module"></script>
+  <script src="database.js?v=8" type="module"></script>
+  <script src="app.js?v=8" type="module"></script>
 </body>
 </html>

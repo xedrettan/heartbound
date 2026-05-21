@@ -26,7 +26,8 @@ const mapSpaceRow = (row) => ({
   partner2Name: row.partner2_name,
   partner2Avatar: row.partner2_avatar,
   anniversaryDate: row.anniversary_date,
-  partnerBirthday: row.partner_birthday
+  partner1Birthday: row.partner1_birthday,
+  partner2Birthday: row.partner2_birthday || row.partner_birthday
 });
 
 const mapLoveHateRow = (row) => ({
@@ -245,7 +246,8 @@ class HeartboundDatabase {
           partner2Name: profileData.partner2Name || profileData.partnerName || "Taylor",
           partner2Avatar: profileData.partner2Avatar || profileData.partnerAvatar || "💖",
           anniversaryDate: profileData.anniversaryDate || "",
-          partnerBirthday: profileData.partnerBirthday || "",
+          partner1Birthday: profileData.partner1Birthday || "",
+          partner2Birthday: profileData.partner2Birthday || profileData.partnerBirthday || "",
           createdAt: serverTimestamp()
         };
         
@@ -265,7 +267,8 @@ class HeartboundDatabase {
           partner2_name: profileData.partner2Name || profileData.partnerName || "Taylor",
           partner2_avatar: profileData.partner2Avatar || profileData.partnerAvatar || "💖",
           anniversary_date: profileData.anniversaryDate || "",
-          partner_birthday: profileData.partnerBirthday || ""
+          partner1_birthday: profileData.partner1Birthday || "",
+          partner2_birthday: profileData.partner2Birthday || profileData.partnerBirthday || ""
         };
 
         const { error } = await this.supabaseClient
@@ -409,7 +412,8 @@ class HeartboundDatabase {
           partner2Name: p2Name,
           partner2Avatar: p2Avatar,
           anniversaryDate: profileData.anniversaryDate,
-          partnerBirthday: profileData.partnerBirthday
+          partner1Birthday: profileData.partner1Birthday,
+          partner2Birthday: profileData.partner2Birthday
         });
         await this.refreshSpaceInfo();
       } else if (provider === "supabase") {
@@ -421,7 +425,8 @@ class HeartboundDatabase {
             partner2_name: p2Name,
             partner2_avatar: p2Avatar,
             anniversary_date: profileData.anniversaryDate,
-            partner_birthday: profileData.partnerBirthday
+            partner1_birthday: profileData.partner1Birthday,
+            partner2_birthday: profileData.partner2Birthday
           })
           .eq("id", this.activeSpaceId);
         if (error) throw error;
@@ -435,7 +440,8 @@ class HeartboundDatabase {
         partner2Name: p2Name,
         partner2Avatar: p2Avatar,
         anniversaryDate: profileData.anniversaryDate,
-        partnerBirthday: profileData.partnerBirthday
+        partner1Birthday: profileData.partner1Birthday,
+        partner2Birthday: profileData.partner2Birthday
       };
       localStorage.setItem("hb_sandbox_profile", JSON.stringify(localProfile));
       window.dispatchEvent(new Event("hb_local_profile_updated"));

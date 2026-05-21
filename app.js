@@ -349,8 +349,16 @@ function updateCountdownUI() {
   let candidateEvents = [];
 
   // 1. Partner's Birthday
-  if (localSpaceData.partnerBirthday) {
-    const birthdayStr = localSpaceData.partnerBirthday;
+  const role = localStorage.getItem("hb_user_role") || "partner1";
+  let targetBirthdayStr = role === "partner2" ? localSpaceData.partner1Birthday : localSpaceData.partner2Birthday;
+    
+  // Fallback if the new schema fields are missing
+  if (!targetBirthdayStr && localSpaceData.partnerBirthday) {
+    targetBirthdayStr = localSpaceData.partnerBirthday;
+  }
+    
+  if (targetBirthdayStr) {
+    const birthdayStr = targetBirthdayStr;
     const parts = birthdayStr.split("-").map(Number);
     if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
       const [bYear, bMonth, bDay] = parts;
@@ -360,7 +368,6 @@ function updateCountdownUI() {
         nextBday.setFullYear(todayZero.getFullYear() + 1);
       }
       
-      const role = localStorage.getItem("hb_user_role") || "partner1";
       const targetPartnerName = role === "partner2" ? (localSpaceData.partner1Name || "Alex") : (localSpaceData.partner2Name || "Taylor");
       candidateEvents.push({
         title: `${targetPartnerName}'s Birthday 🎂`,
@@ -957,23 +964,29 @@ function initSettingsAndForms() {
 
   // Paste Love Sync Code Form Submit
   const formJoinInvite = document.getElementById("form-join-invite");
-  if (formJoinInvite) {
-    formJoinInvite.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const code = document.getElementById("onboard-invite-code").value.trim();
-      if (code) {
-        const success = db.bootstrapFromInviteCode(code);
-        if (success) {
-          localStorage.setItem("hb_user_role", "partner2"); // Mark joining user as partner2
-          // Skip the secondary setup step. The Creator already set the partner's name and avatar in the DB!
-          onboardingModal.classList.add("hidden");
-          setupRealtimeSubscriptions();
-        } else {
-          alert("Failed to connect using that Invite Code. Please verify the code string!");
-        }
+  const btnLoginCreator = document.getElementById("btn-login-creator");
+  const btnLoginPartner = document.getElementById("btn-login-partner");
+
+  const processInvite = (role) => {
+    const code = document.getElementById("onboard-invite-code").value.trim();
+    if (code) {
+      const success = db.bootstrapFromInviteCode(code);
+      if (success) {
+        localStorage.setItem("hb_user_role", role); // Mark joining user as partner1 (Creator) or partner2 (Partner)
+        // Skip the secondary setup step. The Creator already set the partner's name and avatar in the DB!
+        onboardingModal.classList.add("hidden");
+        setupRealtimeSubscriptions();
+      } else {
+        alert("Failed to connect using that Invite Code. Please verify the code string!");
       }
-    });
+    }
+  };
+
+  if (formJoinInvite) {
+    formJoinInvite.addEventListener("submit", (e) => e.preventDefault()); // Prevent normal submit
   }
+  if (btnLoginCreator) btnLoginCreator.addEventListener("click", () => processInvite("partner1"));
+  if (btnLoginPartner) btnLoginPartner.addEventListener("click", () => processInvite("partner2"));
 
   // Simplified Partner welcome details submit
   const formPartnerSetup = document.getElementById("form-partner-setup");
@@ -1062,7 +1075,8 @@ function initSettingsAndForms() {
         document.getElementById("settings-partner-avatar").value = localSpaceData.partner2Avatar || "💖";
       }
       document.getElementById("settings-anniversary").value = localSpaceData.anniversaryDate || "";
-      document.getElementById("settings-partner-birthday").value = localSpaceData.partnerBirthday || "";
+      document.getElementById("settings-user-birthday").value = localSpaceData.partner1Birthday || "";
+      document.getElementById("settings-partner-birthday").value = localSpaceData.partner2Birthday || "";
     }
     settingsModal.classList.remove("hidden");
   });
@@ -1134,7 +1148,8 @@ function initSettingsAndForms() {
       partner2Name: document.getElementById("onboard-partner-name").value.trim(),
       partner2Avatar: document.getElementById("onboard-partner-avatar").value.trim(),
       anniversaryDate: document.getElementById("onboard-anniversary").value,
-      partnerBirthday: document.getElementById("onboard-partner-birthday").value
+      partner1Birthday: document.getElementById("onboard-user-birthday").value,
+      partner2Birthday: document.getElementById("onboard-partner-birthday").value
     };
 
     onboardingModal.classList.add("hidden");
@@ -1163,7 +1178,8 @@ function initSettingsAndForms() {
       partnerName: document.getElementById("settings-partner-name").value.trim(),
       partnerAvatar: document.getElementById("settings-partner-avatar").value.trim(),
       anniversaryDate: document.getElementById("settings-anniversary").value,
-      partnerBirthday: document.getElementById("settings-partner-birthday").value
+      partner1Birthday: document.getElementById("settings-user-birthday").value,
+      partner2Birthday: document.getElementById("settings-partner-birthday").value
     };
 
     await db.updateSpaceInfo(profile);
