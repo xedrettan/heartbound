@@ -105,15 +105,29 @@ class HeartboundDatabase {
     this.initConnection();
   }
 
-  clearDbConfig() {
+  async destroyApp() {
     this.unsubscribeAll();
+    if (this.firebaseApp) {
+      try {
+        const { deleteApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+        await deleteApp(this.firebaseApp);
+        console.log("Firebase App destroyed successfully.");
+      } catch (e) {
+        console.error("Error deleting Firebase app:", e);
+      }
+    }
     this.dbConfig = null;
     this.activeSpaceId = null;
     this.firestore = null;
     this.firebaseApp = null;
     this.supabaseClient = null;
+  }
+
+  async clearDbConfig() {
+    await this.destroyApp();
     localStorage.removeItem("hb_db_config");
     localStorage.removeItem("hb_space_id");
+    localStorage.removeItem("hb_user_role");
     this.triggerStatusChange();
   }
 
@@ -330,6 +344,35 @@ class HeartboundDatabase {
         return false;
       }
     }
+  }
+
+  async fetchSpace(spaceId = this.activeSpaceId) {
+    if (!this.isCloudMode() || !spaceId) return null;
+    const provider = this.getCloudProvider();
+    if (provider === "firebase") {
+      try {
+        const spaceDocRef = doc(this.firestore, "spaces", spaceId);
+        const snap = await getDoc(spaceDocRef);
+        return snap.exists() ? snap.data() : null;
+      } catch (e) {
+        console.error("fetchSpace Firebase error:", e);
+        return null;
+      }
+    } else if (provider === "supabase") {
+      try {
+        const { data, error } = await this.supabaseClient
+          .from("spaces")
+          .select("*")
+          .eq("id", spaceId)
+          .maybeSingle();
+        if (error) throw error;
+        return data ? mapSpaceRow(data) : null;
+      } catch (e) {
+        console.error("fetchSpace Supabase error:", e);
+        return null;
+      }
+    }
+    return null;
   }
 
   // --- CRUD WRAPPERS ---

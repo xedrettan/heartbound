@@ -63,16 +63,33 @@ document.addEventListener("DOMContentLoaded", async () => {
   initSettingsAndForms();
   
   // Parse invite URL search parameters if any
-  checkForInviteLink();
+  const params = new URLSearchParams(window.location.search);
+  const inviteCode = params.get("invite");
   
-  // Clean up any logout redirect query params
-  if (window.location.search) {
-    const cleanUrl = window.location.origin + window.location.pathname;
-    window.history.replaceState({}, document.title, cleanUrl);
+  if (inviteCode) {
+    console.log("Found invite parameter in URL. Bootstrapping...");
+    const success = db.bootstrapFromInviteCode(inviteCode);
+    if (success) {
+      // Clean query parameters from URL bar
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Route connection (it will call initConnection and handle routing)
+      await handleInviteRouting();
+    } else {
+      alert("Invalid or expired Love Sync invite link.");
+      db.initConnection(handleConnectionStatusChange);
+    }
+  } else {
+    // Clean up any logout redirect query params
+    if (window.location.search) {
+      const cleanUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+    
+    // Connect database logic normally
+    db.initConnection(handleConnectionStatusChange);
   }
-  
-  // Connect database logic
-  db.initConnection(handleConnectionStatusChange);
 });
 
 // --- CONNECTION STATUS HANDLER ---
@@ -81,7 +98,7 @@ function handleConnectionStatusChange(status, spaceId) {
   const badgeText = document.getElementById("connection-status-text");
   
   // Reset classes
-  badge.className = "connection-badge";
+  if (badge) badge.className = "connection-badge";
   
   // Toggle pairing panel inputs depending on connection status
   const configForm = document.getElementById("form-cloud-config");
@@ -95,13 +112,15 @@ function handleConnectionStatusChange(status, spaceId) {
   const btnCopyCreatorCode = document.getElementById("btn-copy-creator-code");
 
   if (status === "sandbox") {
-    badge.classList.add("sandbox");
-    badgeText.innerText = "Sandbox Mode";
-    pairPanel.classList.add("disabled");
+    if (badge) {
+      badge.classList.add("sandbox");
+      if (badgeText) badgeText.innerText = "Sandbox Mode";
+    }
+    if (pairPanel) pairPanel.classList.add("disabled");
     if (displayCode) displayCode.innerText = "--------";
     if (btnCopy) btnCopy.disabled = true;
-    inputPairCode.disabled = true;
-    btnSubmitPair.disabled = true;
+    if (inputPairCode) inputPairCode.disabled = true;
+    if (btnSubmitPair) btnSubmitPair.disabled = true;
     if (btnCopyCreatorCode) btnCopyCreatorCode.disabled = true;
     if (btnCopyInviteCode) btnCopyInviteCode.disabled = true;
     
@@ -109,15 +128,17 @@ function handleConnectionStatusChange(status, spaceId) {
     checkOnboarding(false);
   } else {
     // Cloud connection established
-    pairPanel.classList.remove("disabled");
-    inputPairCode.disabled = false;
-    btnSubmitPair.disabled = false;
+    if (pairPanel) pairPanel.classList.remove("disabled");
+    if (inputPairCode) inputPairCode.disabled = false;
+    if (btnSubmitPair) btnSubmitPair.disabled = false;
 
     const providerName = db.getCloudProvider() === "supabase" ? "Supabase" : "Firebase";
 
     if (status === "cloud_connected") {
-      badge.classList.add("cloud");
-      badgeText.innerText = `${providerName} Connected (Not Paired)`;
+      if (badge) {
+        badge.classList.add("cloud");
+        if (badgeText) badgeText.innerText = `${providerName} Connected (Not Paired)`;
+      }
       if (displayCode) displayCode.innerText = "Generating...";
       if (btnCopy) btnCopy.disabled = true;
       if (btnCopyCreatorCode) btnCopyCreatorCode.disabled = true;
@@ -126,12 +147,18 @@ function handleConnectionStatusChange(status, spaceId) {
       // Auto-create space document if none exists
       triggerAutoSpaceCreation();
     } else if (status === "paired") {
-      badge.classList.add("paired");
-      badgeText.innerText = `${providerName} Paired: ${spaceId}`;
+      if (badge) {
+        badge.classList.add("paired");
+        if (badgeText) badgeText.innerText = `${providerName} Paired: ${spaceId}`;
+      }
       if (displayCode) displayCode.innerText = spaceId;
       if (btnCopy) btnCopy.disabled = false;
       if (btnCopyCreatorCode) btnCopyCreatorCode.disabled = false;
       if (btnCopyInviteCode) btnCopyInviteCode.disabled = false;
+      
+      // Explicitly hide the onboarding modal once cloud connection is established and paired
+      const onboardingModal = document.getElementById("modal-onboarding");
+      if (onboardingModal) onboardingModal.classList.add("hidden");
       
       // Setup Live Listeners
       setupRealtimeSubscriptions();
@@ -157,37 +184,60 @@ async function triggerAutoSpaceCreation() {
   }
 }
 
-function checkForInviteLink() {
-  const params = new URLSearchParams(window.location.search);
-  const inviteCode = params.get("invite");
-  if (inviteCode) {
-    console.log("Found invite parameter in URL. Bootstrapping...");
-    const success = db.bootstrapFromInviteCode(inviteCode);
-    if (success) {
-      // Clean query parameters from URL bar
-      const newUrl = window.location.origin + window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
-      
-      // Force show simplified onboarding
-      setTimeout(() => {
-        const onboardingModal = document.getElementById("modal-onboarding");
-        if (onboardingModal) {
-          onboardingModal.classList.remove("hidden");
-          // Switch view to simplified partner setup
-          const onboardTabs = document.getElementById("onboard-tabs");
-          const formOnboarding = document.getElementById("form-onboarding");
-          const panelJoinSpace = document.getElementById("panel-join-space");
-          const formPartnerSetup = document.getElementById("form-partner-setup");
-          
-          if (onboardTabs) onboardTabs.classList.add("hidden");
-          if (formOnboarding) formOnboarding.classList.add("hidden");
-          if (panelJoinSpace) panelJoinSpace.classList.add("hidden");
-          if (formPartnerSetup) formPartnerSetup.classList.remove("hidden");
-        }
-      }, 500);
+async function handleInviteRouting() {
+  const onboardingModal = document.getElementById("modal-onboarding");
+  const onboardTabs = document.getElementById("onboard-tabs");
+  const formOnboarding = document.getElementById("form-onboarding");
+  const panelJoinSpace = document.getElementById("panel-join-space");
+  const formPartnerSetup = document.getElementById("form-partner-setup");
+
+  // Connect database and run connections
+  console.log("Connecting database via invite code...");
+  const connected = await db.initConnection(handleConnectionStatusChange);
+  if (!connected) {
+    alert("Database connection failed. Please verify configurations!");
+    return;
+  }
+
+  const role = localStorage.getItem("hb_user_role") || "partner2";
+  
+  if (role === "partner1") {
+    // Creator: bypass secondary setup details form and log in directly
+    console.log("Creator Recovery Code used. Direct dashboard entry.");
+    if (onboardingModal) onboardingModal.classList.add("hidden");
+    setupRealtimeSubscriptions();
+    return;
+  }
+
+  // Partner (partner2): fetch space to see if name/avatar details are already configured
+  console.log("Partner Sync Code used. Fetching space data...");
+  const spaceData = await db.fetchSpace();
+  if (spaceData) {
+    const isPartnerSet = spaceData.partner2Name && 
+                         spaceData.partner2Name.trim() !== "" && 
+                         spaceData.partner2Name !== "Taylor";
+    if (isPartnerSet) {
+      // Returning Partner: bypass onboarding, direct dashboard entry
+      console.log("Returning partner detected (onboarded). Direct dashboard entry.");
+      if (onboardingModal) onboardingModal.classList.add("hidden");
+      setupRealtimeSubscriptions();
     } else {
-      alert("Invalid or expired Love Sync invite link.");
+      // First-time Partner: show simplified partner onboarding screen
+      console.log("First-time partner detected. Redirecting to setup...");
+      if (onboardingModal) onboardingModal.classList.remove("hidden");
+      if (onboardTabs) onboardTabs.classList.add("hidden");
+      if (formOnboarding) formOnboarding.classList.add("hidden");
+      if (panelJoinSpace) panelJoinSpace.classList.add("hidden");
+      if (formPartnerSetup) formPartnerSetup.classList.remove("hidden");
     }
+  } else {
+    // Fallback: show onboarding simplified form
+    console.log("Space information not found. Showing partner setup form.");
+    if (onboardingModal) onboardingModal.classList.remove("hidden");
+    if (onboardTabs) onboardTabs.classList.add("hidden");
+    if (formOnboarding) formOnboarding.classList.add("hidden");
+    if (panelJoinSpace) panelJoinSpace.classList.add("hidden");
+    if (formPartnerSetup) formPartnerSetup.classList.remove("hidden");
   }
 }
 
@@ -210,7 +260,7 @@ function checkOnboarding(isCloud = false) {
   if (!hasProfile) {
     showOnboardingScreen();
   } else {
-    onboardingModal.classList.add("hidden");
+    if (onboardingModal) onboardingModal.classList.add("hidden");
     if (!isCloud) {
       setupRealtimeSubscriptions(); // Trigger local subscriptions
     }
@@ -232,18 +282,24 @@ function showOnboardingScreen() {
   if (formPartnerSetup) formPartnerSetup.classList.add("hidden");
   
   // Show the modal
-  onboardingModal.classList.remove("hidden");
+  if (onboardingModal) onboardingModal.classList.remove("hidden");
 }
 
-// Complete logout: wipe everything and show onboarding WITHOUT page reload
-function performLogout() {
-  // 1. Set guard flag so no async callback can re-hide onboarding
+// Complete logout: wipe everything and trigger a clean, hard page reload
+async function performLogout() {
   isLoggedOut = true;
   
-  // 2. Stop all real-time Firebase/Supabase listeners
+  // 1. Stop all real-time database listeners
   db.unsubscribeAll();
   
-  // 3. Nuclear clear: remove ALL heartbound localStorage keys
+  // 2. Tear down the Firebase/Supabase connection context completely
+  try {
+    await db.destroyApp();
+  } catch (e) {
+    console.error("Error tearing down Firebase context on logout:", e);
+  }
+  
+  // 3. Nuclear clear local storage (by sweeping hb_ keys first, then using clear to ensure perfect blank slate)
   const keysToRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
@@ -253,38 +309,14 @@ function performLogout() {
   }
   keysToRemove.forEach(key => localStorage.removeItem(key));
   
-  // 4. Reset the database module's in-memory state
-  db.dbConfig = null;
-  db.activeSpaceId = null;
-  db.firestore = null;
-  db.firebaseApp = null;
-  db.supabaseClient = null;
+  try {
+    localStorage.clear();
+  } catch (e) {
+    console.error("Local storage clearance failed:", e);
+  }
   
-  // 5. Reset all in-memory app data
-  localSpaceData = null;
-  localLovesHates = [];
-  localMemories = [];
-  localEvents = [];
-  
-  // 6. Hide ALL modals
-  document.querySelectorAll(".modal-overlay").forEach(m => m.classList.add("hidden"));
-  
-  // 7. Reset dashboard UI elements to defaults
-  document.getElementById("nav-user-avatar").innerText = "👤";
-  document.getElementById("nav-partner-avatar").innerText = "💖";
-  document.getElementById("nav-couple-names").innerText = "Alex & Taylor";
-  document.getElementById("nav-days-badge").innerText = "Not Paired";
-  document.getElementById("hero-greeting").innerText = "Hello, Alex";
-  document.getElementById("hero-partner-name").innerText = "Taylor";
-  document.getElementById("dash-days-together").innerText = "--";
-  document.getElementById("countdown-days").innerText = "--";
-  document.getElementById("countdown-event-title").innerText = "No Upcoming Milestone";
-  document.getElementById("countdown-event-date").innerText = "Schedule a celebration in Adventures!";
-  
-  // 8. Show the onboarding screen
-  showOnboardingScreen();
-  
-  console.log("Logout complete — all state cleared, onboarding visible.");
+  // 4. Force a hard, clean page reload to completely destroy active JS state
+  window.location.href = window.location.origin + window.location.pathname;
 }
 
 // Setup listeners (for either Firestore or LocalStorage changes)
@@ -531,36 +563,7 @@ function animateTicker(elementId, targetValue) {
 
 // --- LOVES & HATES LEDGER ---
 
-// Set tab category filter badges click handlers
-const badges = document.querySelectorAll(".filter-badge");
-badges.forEach(badge => {
-  badge.addEventListener("click", () => {
-    badges.forEach(b => b.classList.remove("active"));
-    badge.classList.add("active");
-    activeCategoryFilter = badge.getAttribute("data-category");
-    renderLovesHates();
-  });
-});
-
-// Switch Love / Hate ledger types
-document.getElementById("tab-loves").addEventListener("click", () => {
-  document.getElementById("tab-loves").classList.add("active");
-  document.getElementById("tab-hates").classList.remove("active");
-  activeTabType = "love";
-  renderLovesHates();
-});
-
-document.getElementById("tab-hates").addEventListener("click", () => {
-  document.getElementById("tab-loves").classList.remove("active");
-  document.getElementById("tab-hates").classList.add("active");
-  activeTabType = "hate";
-  renderLovesHates();
-});
-
-// Search preferences ledger input
-document.getElementById("pref-search").addEventListener("input", (e) => {
-  renderLovesHates(e.target.value.toLowerCase());
-});
+// (Ledger category and tab click event listeners moved inside initSettingsAndForms with defensive guards)
 
 // Render ledger items grid
 function renderLovesHates(searchQuery = "") {
@@ -677,7 +680,7 @@ function generateThoughtfulNudgeSpark() {
   }
 }
 
-document.getElementById("btn-next-spark").addEventListener("click", generateThoughtfulNudgeSpark);
+// (Thoughtful spark click handler moved inside initSettingsAndForms with defensive guards)
 
 // --- MEMORY LANE JOURNAL TIMELINE ---
 
@@ -1010,6 +1013,56 @@ function initSettingsAndForms() {
   const tripModal = document.getElementById("modal-trip");
   const settingsModal = document.getElementById("modal-settings");
 
+  // Set tab category filter badges click handlers
+  const badges = document.querySelectorAll(".filter-badge");
+  if (badges && badges.length > 0) {
+    badges.forEach(badge => {
+      badge.addEventListener("click", () => {
+        badges.forEach(b => b.classList.remove("active"));
+        badge.classList.add("active");
+        activeCategoryFilter = badge.getAttribute("data-category");
+        renderLovesHates();
+      });
+    });
+  }
+
+  // Switch Love / Hate ledger types
+  const tabLoves = document.getElementById("tab-loves");
+  if (tabLoves) {
+    tabLoves.addEventListener("click", () => {
+      tabLoves.classList.add("active");
+      const tabHates = document.getElementById("tab-hates");
+      if (tabHates) tabHates.classList.remove("active");
+      activeTabType = "love";
+      renderLovesHates();
+    });
+  }
+
+  const tabHates = document.getElementById("tab-hates");
+  if (tabHates) {
+    tabHates.addEventListener("click", () => {
+      const tabLoves = document.getElementById("tab-loves");
+      if (tabLoves) tabLoves.classList.remove("active");
+      tabHates.classList.add("active");
+      activeTabType = "hate";
+      renderLovesHates();
+    });
+  }
+
+  // Search preferences ledger input
+  const prefSearch = document.getElementById("pref-search");
+  if (prefSearch) {
+    prefSearch.addEventListener("input", (e) => {
+      renderLovesHates(e.target.value.toLowerCase());
+    });
+  }
+
+  // Thoughtful Spark Next Idea Button
+  const btnNextSpark = document.getElementById("btn-next-spark");
+  if (btnNextSpark) {
+    btnNextSpark.addEventListener("click", generateThoughtfulNudgeSpark);
+  }
+
   // Onboarding Tab Switches (New Space vs Join Partner)
   const btnTabNewSpace = document.getElementById("btn-tab-new-space");
   const btnTabJoinSpace = document.getElementById("btn-tab-join-space");
@@ -1028,8 +1081,8 @@ function initSettingsAndForms() {
       btnTabJoinSpace.style.borderColor = "rgba(255, 255, 255, 0.1)";
       btnTabJoinSpace.style.color = "rgba(255, 255, 255, 0.6)";
 
-      formOnboarding.classList.remove("hidden");
-      panelJoinSpace.classList.add("hidden");
+      if (formOnboarding) formOnboarding.classList.remove("hidden");
+      if (panelJoinSpace) panelJoinSpace.classList.add("hidden");
     });
 
     btnTabJoinSpace.addEventListener("click", () => {
@@ -1043,24 +1096,22 @@ function initSettingsAndForms() {
       btnTabNewSpace.style.borderColor = "rgba(255, 255, 255, 0.1)";
       btnTabNewSpace.style.color = "rgba(255, 255, 255, 0.6)";
 
-      formOnboarding.classList.add("hidden");
-      panelJoinSpace.classList.remove("hidden");
+      if (formOnboarding) formOnboarding.classList.add("hidden");
+      if (panelJoinSpace) panelJoinSpace.classList.remove("hidden");
     });
   }
 
   // Paste Love Sync Code Form Submit
   const formJoinInvite = document.getElementById("form-join-invite");
-  
   if (formJoinInvite) {
-    formJoinInvite.addEventListener("submit", (e) => {
+    formJoinInvite.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const code = document.getElementById("onboard-invite-code").value.trim();
+      const codeInput = document.getElementById("onboard-invite-code");
+      const code = codeInput ? codeInput.value.trim() : "";
       if (code) {
         const success = db.bootstrapFromInviteCode(code);
         if (success) {
-          // Note: localStorage role is now correctly read from the decoded payload inside bootstrapFromInviteCode!
-          onboardingModal.classList.add("hidden");
-          setupRealtimeSubscriptions();
+          await handleInviteRouting();
         } else {
           alert("Failed to connect using that Love Sync Code. Please verify the code string!");
         }
@@ -1073,22 +1124,20 @@ function initSettingsAndForms() {
   if (formPartnerSetup) {
     formPartnerSetup.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const name = document.getElementById("partner-setup-name").value.trim();
-      const avatar = document.getElementById("partner-setup-avatar").value.trim();
+      const nameInput = document.getElementById("partner-setup-name");
+      const avatarInput = document.getElementById("partner-setup-avatar");
+      const name = nameInput ? nameInput.value.trim() : "";
+      const avatar = avatarInput ? avatarInput.value.trim() : "";
       
       if (name && avatar) {
         try {
           await db.updatePartnerDetails(name, avatar);
-          
-          // Hide onboarding modal
-          onboardingModal.classList.add("hidden");
-          
-          // Setup real-time subscriptions
+          if (onboardingModal) onboardingModal.classList.add("hidden");
           setupRealtimeSubscriptions();
         } catch (err) {
           console.error("Partner details update failure:", err);
           alert("Could not update space details. Logging you in anyway...");
-          onboardingModal.classList.add("hidden");
+          if (onboardingModal) onboardingModal.classList.add("hidden");
           setupRealtimeSubscriptions();
         }
       }
@@ -1099,96 +1148,147 @@ function initSettingsAndForms() {
     const fbInputs = document.getElementById("firebase-inputs");
     const sbInputs = document.getElementById("supabase-inputs");
     if (provider === "supabase") {
-      fbInputs.classList.add("hidden");
-      sbInputs.classList.remove("hidden");
+      if (fbInputs) fbInputs.classList.add("hidden");
+      if (sbInputs) sbInputs.classList.remove("hidden");
     } else {
-      fbInputs.classList.remove("hidden");
-      sbInputs.classList.add("hidden");
+      if (fbInputs) fbInputs.classList.remove("hidden");
+      if (sbInputs) sbInputs.classList.add("hidden");
     }
   };
 
-  document.getElementById("db-provider").addEventListener("change", (e) => {
-    toggleDbInputs(e.target.value);
-  });
+  const dbProvider = document.getElementById("db-provider");
+  if (dbProvider) {
+    dbProvider.addEventListener("change", (e) => {
+      toggleDbInputs(e.target.value);
+    });
+  }
 
-  // Open buttons
   const openSyncModal = () => {
+    const providerSelect = document.getElementById("db-provider");
     if (db.dbConfig) {
       const provider = db.dbConfig.provider || "firebase";
-      document.getElementById("db-provider").value = provider;
+      if (providerSelect) providerSelect.value = provider;
       toggleDbInputs(provider);
       
       if (provider === "firebase") {
-        document.getElementById("db-apikey").value = db.dbConfig.apiKey || "";
-        document.getElementById("db-projectid").value = db.dbConfig.projectId || "";
-        document.getElementById("db-appid").value = db.dbConfig.appId || "";
+        const apiKey = document.getElementById("db-apikey");
+        const projectId = document.getElementById("db-projectid");
+        const appId = document.getElementById("db-appid");
+        if (apiKey) apiKey.value = db.dbConfig.apiKey || "";
+        if (projectId) projectId.value = db.dbConfig.projectId || "";
+        if (appId) appId.value = db.dbConfig.appId || "";
       } else if (provider === "supabase") {
-        document.getElementById("db-supabase-url").value = db.dbConfig.supabaseUrl || "";
-        document.getElementById("db-supabase-key").value = db.dbConfig.supabaseKey || "";
+        const sbUrl = document.getElementById("db-supabase-url");
+        const sbKey = document.getElementById("db-supabase-key");
+        if (sbUrl) sbUrl.value = db.dbConfig.supabaseUrl || "";
+        if (sbKey) sbKey.value = db.dbConfig.supabaseKey || "";
       }
     } else {
-      document.getElementById("db-provider").value = "firebase";
+      if (providerSelect) providerSelect.value = "firebase";
       toggleDbInputs("firebase");
     }
-    cloudModal.classList.remove("hidden");
+    if (cloudModal) cloudModal.classList.remove("hidden");
   };
 
-  document.getElementById("btn-open-sync").addEventListener("click", openSyncModal);
+  const btnOpenSync = document.getElementById("btn-open-sync");
+  if (btnOpenSync) {
+    btnOpenSync.addEventListener("click", openSyncModal);
+  }
   
   const btnOpenSyncMobile = document.getElementById("btn-open-sync-mobile");
   if (btnOpenSyncMobile) {
     btnOpenSyncMobile.addEventListener("click", openSyncModal);
   }
 
-  document.getElementById("btn-quick-settings").addEventListener("click", () => {
-    if (localSpaceData) {
-      const role = localStorage.getItem("hb_user_role") || "partner1";
-      if (role === "partner2") {
-        document.getElementById("settings-user-name").value = localSpaceData.partner2Name || "";
-        document.getElementById("settings-user-avatar").value = localSpaceData.partner2Avatar || "💖";
-        document.getElementById("settings-partner-name").value = localSpaceData.partner1Name || "";
-        document.getElementById("settings-partner-avatar").value = localSpaceData.partner1Avatar || "👤";
-      } else {
-        document.getElementById("settings-user-name").value = localSpaceData.partner1Name || "";
-        document.getElementById("settings-user-avatar").value = localSpaceData.partner1Avatar || "👤";
-        document.getElementById("settings-partner-name").value = localSpaceData.partner2Name || "";
-        document.getElementById("settings-partner-avatar").value = localSpaceData.partner2Avatar || "💖";
+  const btnQuickSettings = document.getElementById("btn-quick-settings");
+  if (btnQuickSettings) {
+    btnQuickSettings.addEventListener("click", () => {
+      if (localSpaceData) {
+        const role = localStorage.getItem("hb_user_role") || "partner1";
+        const userNameInput = document.getElementById("settings-user-name");
+        const userAvatarInput = document.getElementById("settings-user-avatar");
+        const partnerNameInput = document.getElementById("settings-partner-name");
+        const partnerAvatarInput = document.getElementById("settings-partner-avatar");
+        const anniversaryInput = document.getElementById("settings-anniversary");
+        const userBirthdayInput = document.getElementById("settings-user-birthday");
+        const partnerBirthdayInput = document.getElementById("settings-partner-birthday");
+
+        if (role === "partner2") {
+          if (userNameInput) userNameInput.value = localSpaceData.partner2Name || "";
+          if (userAvatarInput) userAvatarInput.value = localSpaceData.partner2Avatar || "💖";
+          if (partnerNameInput) partnerNameInput.value = localSpaceData.partner1Name || "";
+          if (partnerAvatarInput) partnerAvatarInput.value = localSpaceData.partner1Avatar || "👤";
+        } else {
+          if (userNameInput) userNameInput.value = localSpaceData.partner1Name || "";
+          if (userAvatarInput) userAvatarInput.value = localSpaceData.partner1Avatar || "👤";
+          if (partnerNameInput) partnerNameInput.value = localSpaceData.partner2Name || "";
+          if (partnerAvatarInput) partnerAvatarInput.value = localSpaceData.partner2Avatar || "💖";
+        }
+        if (anniversaryInput) anniversaryInput.value = localSpaceData.anniversaryDate || "";
+        if (userBirthdayInput) userBirthdayInput.value = localSpaceData.partner1Birthday || "";
+        if (partnerBirthdayInput) partnerBirthdayInput.value = localSpaceData.partner2Birthday || "";
       }
-      document.getElementById("settings-anniversary").value = localSpaceData.anniversaryDate || "";
-      document.getElementById("settings-user-birthday").value = localSpaceData.partner1Birthday || "";
-      document.getElementById("settings-partner-birthday").value = localSpaceData.partner2Birthday || "";
-    }
-    settingsModal.classList.remove("hidden");
-  });
+      if (settingsModal) settingsModal.classList.remove("hidden");
+    });
+  }
 
-  document.getElementById("btn-add-preference").addEventListener("click", () => {
-    // Reset forms
-    document.getElementById("form-preference").reset();
-    document.getElementById("pref-id").value = "";
-    document.getElementById("pref-modal-title").innerText = "Add Loves/Hates Detail";
-    prefModal.classList.remove("hidden");
-  });
+  const btnAddPreference = document.getElementById("btn-add-preference");
+  if (btnAddPreference) {
+    btnAddPreference.addEventListener("click", () => {
+      const formPref = document.getElementById("form-preference");
+      const prefId = document.getElementById("pref-id");
+      const prefTitle = document.getElementById("pref-modal-title");
+      if (formPref) formPref.reset();
+      if (prefId) prefId.value = "";
+      if (prefTitle) prefTitle.innerText = "Add Loves/Hates Detail";
+      if (prefModal) prefModal.classList.remove("hidden");
+    });
+  }
 
-  document.getElementById("btn-add-memory").addEventListener("click", () => {
-    document.getElementById("form-memory").reset();
-    document.getElementById("memory-date").value = new Date().toISOString().split('T')[0];
-    initPresetCovers(); // reload presets
-    memoryModal.classList.remove("hidden");
-  });
+  const btnAddMemory = document.getElementById("btn-add-memory");
+  if (btnAddMemory) {
+    btnAddMemory.addEventListener("click", () => {
+      const formMem = document.getElementById("form-memory");
+      const memDate = document.getElementById("memory-date");
+      if (formMem) formMem.reset();
+      if (memDate) memDate.value = new Date().toISOString().split('T')[0];
+      initPresetCovers();
+      if (memoryModal) memoryModal.classList.remove("hidden");
+    });
+  }
 
-  document.getElementById("btn-add-celebration").addEventListener("click", () => {
-    document.getElementById("form-celebration").reset();
-    celModal.classList.remove("hidden");
-  });
+  const btnAddCelebration = document.getElementById("btn-add-celebration");
+  if (btnAddCelebration) {
+    btnAddCelebration.addEventListener("click", () => {
+      const formCel = document.getElementById("form-celebration");
+      if (formCel) formCel.reset();
+      if (celModal) celModal.classList.remove("hidden");
+    });
+  }
 
-  document.getElementById("btn-add-trip").addEventListener("click", () => {
-    document.getElementById("form-trip").reset();
-    tripModal.classList.remove("hidden");
-  });
+  const btnAddTrip = document.getElementById("btn-add-trip");
+  if (btnAddTrip) {
+    btnAddTrip.addEventListener("click", () => {
+      const formT = document.getElementById("form-trip");
+      if (formT) formT.reset();
+      if (tripModal) tripModal.classList.remove("hidden");
+    });
+  }
 
   // Close buttons
-  document.getElementById("btn-close-sync").addEventListener("click", () => cloudModal.classList.add("hidden"));
-  document.getElementById("btn-close-settings").addEventListener("click", () => settingsModal.classList.add("hidden"));
+  const btnCloseSync = document.getElementById("btn-close-sync");
+  if (btnCloseSync) {
+    btnCloseSync.addEventListener("click", () => {
+      if (cloudModal) cloudModal.classList.add("hidden");
+    });
+  }
+
+  const btnCloseSettings = document.getElementById("btn-close-settings");
+  if (btnCloseSettings) {
+    btnCloseSettings.addEventListener("click", () => {
+      if (settingsModal) settingsModal.classList.add("hidden");
+    });
+  }
 
   // Generic close by data-attributes
   document.querySelectorAll("[data-close]").forEach(btn => {
@@ -1217,56 +1317,62 @@ function initSettingsAndForms() {
   // --- SUBMIT EVENTS HANDLERS ---
 
   // 1. Onboarding Form Setup
-  document.getElementById("form-onboarding").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    
-    localStorage.setItem("hb_user_role", "partner1"); // Onboarding user is the creator (partner1)
-    
-    const profile = {
-      partner1Name: document.getElementById("onboard-user-name").value.trim(),
-      partner1Avatar: document.getElementById("onboard-user-avatar").value.trim(),
-      partner2Name: document.getElementById("onboard-partner-name").value.trim(),
-      partner2Avatar: document.getElementById("onboard-partner-avatar").value.trim(),
-      anniversaryDate: document.getElementById("onboard-anniversary").value,
-      partner1Birthday: document.getElementById("onboard-user-birthday").value,
-      partner2Birthday: document.getElementById("onboard-partner-birthday").value
-    };
+  const formOnboardingSubmit = document.getElementById("form-onboarding");
+  if (formOnboardingSubmit) {
+    formOnboardingSubmit.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      localStorage.setItem("hb_user_role", "partner1"); // Onboarding user is the creator (partner1)
+      
+      const profile = {
+        partner1Name: document.getElementById("onboard-user-name").value.trim(),
+        partner1Avatar: document.getElementById("onboard-user-avatar").value.trim(),
+        partner2Name: document.getElementById("onboard-partner-name").value.trim(),
+        partner2Avatar: document.getElementById("onboard-partner-avatar").value.trim(),
+        anniversaryDate: document.getElementById("onboard-anniversary").value,
+        partner1Birthday: document.getElementById("onboard-user-birthday").value,
+        partner2Birthday: document.getElementById("onboard-partner-birthday").value
+      };
 
-    onboardingModal.classList.add("hidden");
-    
-    if (db.isCloudMode() && !db.isPaired()) {
-      try {
-        const generatedId = await db.createCloudSpace(profile);
-        handleConnectionStatusChange("paired", generatedId);
-      } catch (err) {
-        alert("Failed to initialize space database. Fallback to Local.");
+      if (onboardingModal) onboardingModal.classList.add("hidden");
+      
+      if (db.isCloudMode() && !db.isPaired()) {
+        try {
+          const generatedId = await db.createCloudSpace(profile);
+          handleConnectionStatusChange("paired", generatedId);
+        } catch (err) {
+          alert("Failed to initialize space database. Fallback to Local.");
+        }
+      } else {
+        // Local setup
+        localStorage.setItem("hb_sandbox_profile", JSON.stringify(profile));
+        setupRealtimeSubscriptions();
       }
-    } else {
-      // Local setup
-      localStorage.setItem("hb_sandbox_profile", JSON.stringify(profile));
-      setupRealtimeSubscriptions();
-    }
-  });
+    });
+  }
 
   // 2. Settings Profile Update
-  document.getElementById("form-settings").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    
-    const profile = {
-      userName: document.getElementById("settings-user-name").value.trim(),
-      userAvatar: document.getElementById("settings-user-avatar").value.trim(),
-      partnerName: document.getElementById("settings-partner-name").value.trim(),
-      partnerAvatar: document.getElementById("settings-partner-avatar").value.trim(),
-      anniversaryDate: document.getElementById("settings-anniversary").value,
-      partner1Birthday: document.getElementById("settings-user-birthday").value,
-      partner2Birthday: document.getElementById("settings-partner-birthday").value
-    };
+  const formSettingsSubmit = document.getElementById("form-settings");
+  if (formSettingsSubmit) {
+    formSettingsSubmit.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const profile = {
+        userName: document.getElementById("settings-user-name").value.trim(),
+        userAvatar: document.getElementById("settings-user-avatar").value.trim(),
+        partnerName: document.getElementById("settings-partner-name").value.trim(),
+        partnerAvatar: document.getElementById("settings-partner-avatar").value.trim(),
+        anniversaryDate: document.getElementById("settings-anniversary").value,
+        partner1Birthday: document.getElementById("settings-user-birthday").value,
+        partner2Birthday: document.getElementById("settings-partner-birthday").value
+      };
 
-    await db.updateSpaceInfo(profile);
-    settingsModal.classList.add("hidden");
-    // Safety-net: delayed full re-fetch in case primary refresh was missed
-    setTimeout(() => db.forceRefreshAll(), 400);
-  });
+      await db.updateSpaceInfo(profile);
+      if (settingsModal) settingsModal.classList.add("hidden");
+      // Safety-net: delayed full re-fetch in case primary refresh was missed
+      setTimeout(() => db.forceRefreshAll(), 400);
+    });
+  }
 
   const btnLogout = document.getElementById("btn-logout");
   if (btnLogout) {
@@ -1278,133 +1384,158 @@ function initSettingsAndForms() {
   }
 
   // 3. Add/Edit Preference
-  document.getElementById("form-preference").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const id = document.getElementById("pref-id").value;
-    const payload = {
-      type: document.querySelector('input[name="pref-type"]:checked').value,
-      item: document.getElementById("pref-item").value.trim(),
-      category: document.getElementById("pref-category").value,
-      notes: document.getElementById("pref-notes").value.trim()
-    };
+  const formPreferenceSubmit = document.getElementById("form-preference");
+  if (formPreferenceSubmit) {
+    formPreferenceSubmit.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("pref-id").value;
+      const payload = {
+        type: document.querySelector('input[name="pref-type"]:checked').value,
+        item: document.getElementById("pref-item").value.trim(),
+        category: document.getElementById("pref-category").value,
+        notes: document.getElementById("pref-notes").value.trim()
+      };
 
-    if (id) {
-      // Edit exists
-      await db.deleteLoveHate(id); // Simple overwrite delete & add strategy
-    }
-    await db.addLoveHate(payload);
-    
-    prefModal.classList.add("hidden");
-    // Safety-net: delayed full re-fetch in case primary refresh was missed
-    setTimeout(() => db.forceRefreshAll(), 400);
-  });
+      if (id) {
+        // Edit exists
+        await db.deleteLoveHate(id); // Simple overwrite delete & add strategy
+      }
+      await db.addLoveHate(payload);
+      
+      if (prefModal) prefModal.classList.add("hidden");
+      // Safety-net: delayed full re-fetch in case primary refresh was missed
+      setTimeout(() => db.forceRefreshAll(), 400);
+    });
+  }
 
   // 4. Memory Submission
-  document.getElementById("form-memory").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    
-    const customUrl = document.getElementById("memory-cover-url").value.trim();
-    const payload = {
-      title: document.getElementById("memory-title").value.trim(),
-      date: document.getElementById("memory-date").value,
-      feeling: document.getElementById("memory-feeling").value.trim() || "🥰",
-      description: document.getElementById("memory-description").value.trim(),
-      coverUrl: customUrl || activeMemoryCoverUrl
-    };
+  const formMemorySubmit = document.getElementById("form-memory");
+  if (formMemorySubmit) {
+    formMemorySubmit.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      const customUrl = document.getElementById("memory-cover-url").value.trim();
+      const payload = {
+        title: document.getElementById("memory-title").value.trim(),
+        date: document.getElementById("memory-date").value,
+        feeling: document.getElementById("memory-feeling").value.trim() || "🥰",
+        description: document.getElementById("memory-description").value.trim(),
+        coverUrl: customUrl || activeMemoryCoverUrl
+      };
 
-    await db.addMemory(payload);
-    memoryModal.classList.add("hidden");
-    // Safety-net: delayed full re-fetch in case primary refresh was missed
-    setTimeout(() => db.forceRefreshAll(), 400);
-  });
+      await db.addMemory(payload);
+      if (memoryModal) memoryModal.classList.add("hidden");
+      // Safety-net: delayed full re-fetch in case primary refresh was missed
+      setTimeout(() => db.forceRefreshAll(), 400);
+    });
+  }
 
   // 5. Add Celebration Birthday event
-  document.getElementById("form-celebration").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const payload = {
-      type: "birthday",
-      title: document.getElementById("cel-title").value.trim(),
-      date: document.getElementById("cel-date").value,
-      notes: document.getElementById("cel-notes").value.trim(),
-      checklist: []
-    };
+  const formCelebrationSubmit = document.getElementById("form-celebration");
+  if (formCelebrationSubmit) {
+    formCelebrationSubmit.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        type: "birthday",
+        title: document.getElementById("cel-title").value.trim(),
+        date: document.getElementById("cel-date").value,
+        notes: document.getElementById("cel-notes").value.trim(),
+        checklist: []
+      };
 
-    await db.addEvent(payload);
-    celModal.classList.add("hidden");
-    // Safety-net: delayed full re-fetch in case primary refresh was missed
-    setTimeout(() => db.forceRefreshAll(), 400);
-  });
+      await db.addEvent(payload);
+      if (celModal) celModal.classList.add("hidden");
+      // Safety-net: delayed full re-fetch in case primary refresh was missed
+      setTimeout(() => db.forceRefreshAll(), 400);
+    });
+  }
 
   // 6. Add Trip Adventure event
-  document.getElementById("form-trip").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const payload = {
-      type: "trip",
-      title: document.getElementById("trip-title").value.trim(),
-      date: document.getElementById("trip-date").value,
-      notes: document.getElementById("trip-notes").value.trim(),
-      checklist: []
-    };
+  const formTripSubmit = document.getElementById("form-trip");
+  if (formTripSubmit) {
+    formTripSubmit.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        type: "trip",
+        title: document.getElementById("trip-title").value.trim(),
+        date: document.getElementById("trip-date").value,
+        notes: document.getElementById("trip-notes").value.trim(),
+        checklist: []
+      };
 
-    await db.addEvent(payload);
-    tripModal.classList.add("hidden");
-    // Safety-net: delayed full re-fetch in case primary refresh was missed
-    setTimeout(() => db.forceRefreshAll(), 400);
-  });
+      await db.addEvent(payload);
+      if (tripModal) tripModal.classList.add("hidden");
+      // Safety-net: delayed full re-fetch in case primary refresh was missed
+      setTimeout(() => db.forceRefreshAll(), 400);
+    });
+  }
 
   // 7. Connect Database Config Credentials
-  document.getElementById("form-cloud-config").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const provider = document.getElementById("db-provider").value;
-    let config = { provider: provider };
-    
-    if (provider === "firebase") {
-      const apiKey = document.getElementById("db-apikey").value.trim();
-      const projectId = document.getElementById("db-projectid").value.trim();
-      const appId = document.getElementById("db-appid").value.trim();
+  const formCloudConfigSubmit = document.getElementById("form-cloud-config");
+  if (formCloudConfigSubmit) {
+    formCloudConfigSubmit.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const providerSelect = document.getElementById("db-provider");
+      const provider = providerSelect ? providerSelect.value : "firebase";
+      let config = { provider: provider };
       
-      if (!apiKey || !projectId || !appId) {
-        alert("Please fill in all Firebase credentials fields!");
-        return;
+      if (provider === "firebase") {
+        const apiKey = document.getElementById("db-apikey").value.trim();
+        const projectId = document.getElementById("db-projectid").value.trim();
+        const appId = document.getElementById("db-appid").value.trim();
+        
+        if (!apiKey || !projectId || !appId) {
+          alert("Please fill in all Firebase credentials fields!");
+          return;
+        }
+        config.apiKey = apiKey;
+        config.projectId = projectId;
+        config.appId = appId;
+      } else if (provider === "supabase") {
+        const supabaseUrl = document.getElementById("db-supabase-url").value.trim();
+        const supabaseKey = document.getElementById("db-supabase-key").value.trim();
+        
+        if (!supabaseUrl || !supabaseKey) {
+          alert("Please fill in all Supabase URL and Anon Key fields!");
+          return;
+        }
+        config.supabaseUrl = supabaseUrl;
+        config.supabaseKey = supabaseKey;
       }
-      config.apiKey = apiKey;
-      config.projectId = projectId;
-      config.appId = appId;
-    } else if (provider === "supabase") {
-      const supabaseUrl = document.getElementById("db-supabase-url").value.trim();
-      const supabaseKey = document.getElementById("db-supabase-key").value.trim();
       
-      if (!supabaseUrl || !supabaseKey) {
-        alert("Please fill in all Supabase URL and Anon Key fields!");
-        return;
-      }
-      config.supabaseUrl = supabaseUrl;
-      config.supabaseKey = supabaseKey;
-    }
-    
-    db.saveDbConfig(config);
-  });
+      db.saveDbConfig(config);
+    });
+  }
 
   // Clear Database config / Reset to Local Sandbox
-  document.getElementById("btn-clear-db-config").addEventListener("click", () => {
-    if (confirm("Disconnect and clear cloud database credentials? Heartbound will return to Offline Local Sandbox.")) {
-      db.clearDbConfig();
-      document.getElementById("form-cloud-config").reset();
-      cloudModal.classList.add("hidden");
-    }
-  });
-
-  // Copy Love space Pairing code
-  document.getElementById("btn-copy-code").addEventListener("click", () => {
-    const code = document.getElementById("display-space-code").innerText;
-    navigator.clipboard.writeText(code).then(() => {
-      const btn = document.getElementById("btn-copy-code");
-      btn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Copied!`;
-      setTimeout(() => {
-        btn.innerHTML = `<i class="fa-solid fa-copy"></i> Copy`;
-      }, 2000);
+  const btnClearDbConfig = document.getElementById("btn-clear-db-config");
+  if (btnClearDbConfig) {
+    btnClearDbConfig.addEventListener("click", () => {
+      if (confirm("Disconnect and clear cloud database credentials? Heartbound will return to Offline Local Sandbox.")) {
+        db.clearDbConfig();
+        const formCloudConfigReset = document.getElementById("form-cloud-config");
+        if (formCloudConfigReset) formCloudConfigReset.reset();
+        if (cloudModal) cloudModal.classList.add("hidden");
+      }
     });
-  });
+  }
+
+  // Copy Love space Pairing code (Safely guarded, though not used in index.html)
+  const btnCopyCode = document.getElementById("btn-copy-code");
+  if (btnCopyCode) {
+    btnCopyCode.addEventListener("click", () => {
+      const displaySpaceCode = document.getElementById("display-space-code");
+      const code = displaySpaceCode ? displaySpaceCode.innerText : "";
+      if (code) {
+        navigator.clipboard.writeText(code).then(() => {
+          btnCopyCode.innerHTML = `<i class="fa-solid fa-circle-check"></i> Copied!`;
+          setTimeout(() => {
+            btnCopyCode.innerHTML = `<i class="fa-solid fa-copy"></i> Copy`;
+          }, 2000);
+        });
+      }
+    });
+  }
 
   // Copy invite share link
   const btnCopyInviteLink = document.getElementById("btn-copy-invite-link");
@@ -1423,45 +1554,54 @@ function initSettingsAndForms() {
     });
   }
 
-  // Copy raw invite code
+  // Copy raw partner invite code
   const btnCopyInviteCode = document.getElementById("btn-copy-invite-code");
   if (btnCopyInviteCode) {
     btnCopyInviteCode.addEventListener("click", () => {
-      const token = db.generateInviteCode("partner2"); // Generate code encoded as partner
+      const token = db.generateInviteCode("partner2");
       if (token) {
         navigator.clipboard.writeText(token);
         const icon = btnCopyInviteCode.querySelector("i");
-        icon.className = "fa-solid fa-check";
-        setTimeout(() => icon.className = "fa-solid fa-key", 2000);
+        if (icon) {
+          icon.className = "fa-solid fa-check";
+          setTimeout(() => icon.className = "fa-solid fa-key", 2000);
+        }
       }
     });
   }
 
+  // Copy raw creator recovery code
   const btnCopyCreatorCode = document.getElementById("btn-copy-creator-code");
   if (btnCopyCreatorCode) {
     btnCopyCreatorCode.addEventListener("click", () => {
-      const token = db.generateInviteCode("partner1"); // Generate code encoded as creator
+      const token = db.generateInviteCode("partner1");
       if (token) {
         navigator.clipboard.writeText(token);
         const icon = btnCopyCreatorCode.querySelector("i");
-        icon.className = "fa-solid fa-check";
-        setTimeout(() => icon.className = "fa-solid fa-user-shield", 2000);
+        if (icon) {
+          icon.className = "fa-solid fa-check";
+          setTimeout(() => icon.className = "fa-solid fa-user-shield", 2000);
+        }
       }
     });
   }
 
   // Pair existing Space ID code
-  document.getElementById("form-pair-space").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const code = document.getElementById("input-pair-code").value.trim();
-    if (code) {
-      const success = await db.pairExistingCloudSpace(code);
-      if (success) {
-        document.getElementById("input-pair-code").value = "";
-        cloudModal.classList.add("hidden");
+  const formPairSpace = document.getElementById("form-pair-space");
+  if (formPairSpace) {
+    formPairSpace.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pairCodeInput = document.getElementById("input-pair-code");
+      const code = pairCodeInput ? pairCodeInput.value.trim() : "";
+      if (code) {
+        const success = await db.pairExistingCloudSpace(code);
+        if (success) {
+          if (pairCodeInput) pairCodeInput.value = "";
+          if (cloudModal) cloudModal.classList.add("hidden");
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 // --- FLOATING BACKGROUND DECORATIVE AESTHETICS ---
