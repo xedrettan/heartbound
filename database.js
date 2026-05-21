@@ -482,14 +482,18 @@ class HeartboundDatabase {
       const provider = this.getCloudProvider();
       if (provider === "firebase") {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "loves_hates");
-        const q = query(collRef, orderBy("createdAt", "desc"));
-        this.subscriptions.lovesHates = onSnapshot(q, (snap) => {
+        this.subscriptions.lovesHates = onSnapshot(collRef, (snap) => {
           const items = [];
           snap.forEach(doc => {
             items.push({ id: doc.id, ...doc.data() });
           });
+          items.sort((a, b) => {
+            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+            return timeB - timeA;
+          });
           onUpdate(items);
-        });
+        }, (err) => console.error("Firebase lovesHates onSnapshot error:", err));
       } else if (provider === "supabase") {
         const fetchAndEmit = async () => {
           const { data, error } = await this.supabaseClient
@@ -604,14 +608,14 @@ class HeartboundDatabase {
       const provider = this.getCloudProvider();
       if (provider === "firebase") {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "memories");
-        const q = query(collRef, orderBy("date", "desc"));
-        this.subscriptions.memories = onSnapshot(q, (snap) => {
+        this.subscriptions.memories = onSnapshot(collRef, (snap) => {
           const memories = [];
           snap.forEach(doc => {
             memories.push({ id: doc.id, ...doc.data() });
           });
+          memories.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
           onUpdate(memories);
-        });
+        }, (err) => console.error("Firebase memories onSnapshot error:", err));
       } else if (provider === "supabase") {
         const fetchAndEmit = async () => {
           const { data, error } = await this.supabaseClient
@@ -770,14 +774,19 @@ class HeartboundDatabase {
       const provider = this.getCloudProvider();
       if (provider === "firebase") {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "celebrations");
-        const q = query(collRef, orderBy("date", "asc"));
-        this.subscriptions.events = onSnapshot(q, (snap) => {
+        this.subscriptions.events = onSnapshot(collRef, (snap) => {
           const events = [];
           snap.forEach(doc => {
-            events.push({ id: doc.id, ...doc.data() });
+            const data = doc.data();
+            events.push({ 
+              id: doc.id, 
+              ...data,
+              checklist: Array.isArray(data.checklist) ? data.checklist : []
+            });
           });
+          events.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
           onUpdate(events);
-        });
+        }, (err) => console.error("Firebase events onSnapshot error:", err));
       } else if (provider === "supabase") {
         const fetchAndEmit = async () => {
           const { data, error } = await this.supabaseClient
@@ -958,10 +967,14 @@ class HeartboundDatabase {
         if (data) this.callbacks.lovesHates(data.map(mapLoveHateRow));
       } else if (provider === "firebase") {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "loves_hates");
-        const q = query(collRef, orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
+        const snap = await getDocs(collRef);
         const items = [];
         snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        items.sort((a, b) => {
+          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+          return timeB - timeA;
+        });
         this.callbacks.lovesHates(items);
       }
     } catch (e) {
@@ -984,10 +997,10 @@ class HeartboundDatabase {
         if (data) this.callbacks.memories(data.map(mapMemoryRow));
       } else if (provider === "firebase") {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "memories");
-        const q = query(collRef, orderBy("date", "desc"));
-        const snap = await getDocs(q);
+        const snap = await getDocs(collRef);
         const items = [];
         snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        items.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
         this.callbacks.memories(items);
       }
     } catch (e) {
@@ -1010,10 +1023,17 @@ class HeartboundDatabase {
         if (data) this.callbacks.events(data.map(mapCelebrationRow));
       } else if (provider === "firebase") {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "celebrations");
-        const q = query(collRef, orderBy("date", "asc"));
-        const snap = await getDocs(q);
+        const snap = await getDocs(collRef);
         const items = [];
-        snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => {
+          const data = d.data();
+          items.push({
+            id: d.id,
+            ...data,
+            checklist: Array.isArray(data.checklist) ? data.checklist : []
+          });
+        });
+        items.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
         this.callbacks.events(items);
       }
     } catch (e) {
