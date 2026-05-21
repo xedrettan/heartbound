@@ -858,20 +858,31 @@ class HeartboundDatabase {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "celebrations");
         this.subscriptions.events = onSnapshot(collRef, (snap) => {
           const events = [];
-          snap.forEach(doc => {
-            const data = doc.data();
-            events.push({ 
-              id: doc.id, 
+          snap.forEach(docSnap => {
+            const data = docSnap.data();
+            // Normalize: handle capitalized field names from manual Firestore entries
+            const normalizedTitle = data.title || data.Title || data.name || data.Name || "";
+            const rawDate = data.date || data.Date || "";
+            const normalizedDate = (rawDate && rawDate.toDate) ? rawDate.toDate().toISOString().split("T")[0] : rawDate;
+            const normalizedNotes = data.notes || data.Notes || data.description || data.Description || "";
+            const normalizedType = (data.type || data.Type || "celebration").toLowerCase();
+            events.push({
               ...data,
+              id: docSnap.id,
+              title: normalizedTitle,
+              date: normalizedDate,
+              notes: normalizedNotes,
+              type: normalizedType,
               targetRole: data.targetRole || data.target_role || "partner2",
               checklist: safeParseChecklist(data.checklist)
             });
           });
           events.sort((a, b) => {
-            const dA = new Date(a.date || 0).getTime();
-            const dB = new Date(b.date || 0).getTime();
-            return (isNaN(dA) ? 0 : dA) - (isNaN(dB) ? 0 : dB);
+            const tA = a.date ? new Date(a.date).getTime() : 0;
+            const tB = b.date ? new Date(b.date).getTime() : 0;
+            return (isNaN(tA) ? 0 : tA) - (isNaN(tB) ? 0 : tB);
           });
+          console.log("Firebase celebrations snapshot:", events.length, "events", events.map(e => e.title));
           onUpdate(events);
         }, (err) => console.error("Firebase events onSnapshot error:", err));
       } else if (provider === "supabase") {
@@ -1133,18 +1144,29 @@ class HeartboundDatabase {
         const items = [];
         snap.forEach(d => {
           const data = d.data();
+          // Normalize: handle capitalized field names from manual Firestore entries
+          const normalizedTitle = data.title || data.Title || data.name || data.Name || "";
+          const rawDate = data.date || data.Date || "";
+          const normalizedDate = (rawDate && rawDate.toDate) ? rawDate.toDate().toISOString().split("T")[0] : rawDate;
+          const normalizedNotes = data.notes || data.Notes || data.description || data.Description || "";
+          const normalizedType = (data.type || data.Type || "celebration").toLowerCase();
           items.push({
-            id: d.id,
             ...data,
+            id: d.id,
+            title: normalizedTitle,
+            date: normalizedDate,
+            notes: normalizedNotes,
+            type: normalizedType,
             targetRole: data.targetRole || data.target_role || "partner2",
             checklist: safeParseChecklist(data.checklist)
           });
         });
         items.sort((a, b) => {
-          const dA = new Date(a.date || 0).getTime();
-          const dB = new Date(b.date || 0).getTime();
-          return (isNaN(dA) ? 0 : dA) - (isNaN(dB) ? 0 : dB);
+          const tA = a.date ? new Date(a.date).getTime() : 0;
+          const tB = b.date ? new Date(b.date).getTime() : 0;
+          return (isNaN(tA) ? 0 : tA) - (isNaN(tB) ? 0 : tB);
         });
+        console.log("refreshEvents Firebase:", items.length, "items", items.map(e => e.title));
         this.callbacks.events(items);
       }
     } catch (e) {

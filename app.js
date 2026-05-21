@@ -437,6 +437,20 @@ function initRouting() {
         adventures: "Adventures & Planning"
       };
       viewTitle.innerText = headings[targetView] || "Heartbound";
+
+      // Re-render the active tab so data fetched in background is always displayed
+      // This fixes the issue where subscriptions fire before the tab is visible
+      if (targetView === "adventures") {
+        renderEvents();
+        // Also trigger a fresh Firestore pull in case snapshot was missed
+        if (typeof db !== "undefined") {
+          db.refreshEvents && db.refreshEvents();
+        }
+      } else if (targetView === "preferences") {
+        renderLovesHates();
+      } else if (targetView === "timeline") {
+        renderMemories();
+      }
     });
   });
 }
@@ -889,19 +903,36 @@ function renderEvents() {
   const tList = document.getElementById("trips-list");
   const tEmpty = document.getElementById("trips-empty");
 
+  // Null guard — DOM elements may not exist if page is mid-load
+  if (!cList || !tList) {
+    console.warn("renderEvents: list containers not found in DOM yet, skipping render.");
+    return;
+  }
+
   cList.innerHTML = "";
   tList.innerHTML = "";
 
-  // Catch all non-trip events as celebrations in case of legacy or malformed 'type' fields in the database
-  const celebrations = localEvents.filter(e => e.type !== "trip");
-  const trips = localEvents.filter(e => e.type === "trip");
+  // Case-insensitive type detection — handles "trip", "Trip", "TRIP", "adventure" etc.
+  // Everything that isn't a "trip" variant falls into celebrations/milestones.
+  const isTrip = (e) => {
+    const t = (e.type || "").toLowerCase().trim();
+    return t === "trip" || t === "adventure" || t === "travel";
+  };
+  const celebrations = localEvents.filter(e => !isTrip(e));
+  const trips = localEvents.filter(e => isTrip(e));
+
+  console.log(`renderEvents: ${localEvents.length} total | ${celebrations.length} celebrations | ${trips.length} trips`);
 
   // Toggle empty states
-  if (celebrations.length === 0) cEmpty.classList.remove("hidden");
-  else cEmpty.classList.add("hidden");
+  if (!cEmpty || !tEmpty) {
+    console.warn("renderEvents: empty-state elements not found in DOM.");
+  } else {
+    if (celebrations.length === 0) cEmpty.classList.remove("hidden");
+    else cEmpty.classList.add("hidden");
 
-  if (trips.length === 0) tEmpty.classList.remove("hidden");
-  else tEmpty.classList.add("hidden");
+    if (trips.length === 0) tEmpty.classList.remove("hidden");
+    else tEmpty.classList.add("hidden");
+  }
 
   // Render celebrations
   celebrations.forEach(cel => {
