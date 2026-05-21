@@ -1187,6 +1187,27 @@ function initSettingsAndForms() {
       if (providerSelect) providerSelect.value = "firebase";
       toggleDbInputs("firebase");
     }
+    
+    // Dynamically update copy buttons labels based on the active session role
+    const role = localStorage.getItem("hb_user_role") || "partner1";
+    const btnCopyInvite = document.getElementById("btn-copy-invite-code");
+    const btnCopyCreator = document.getElementById("btn-copy-creator-code");
+    
+    if (btnCopyInvite) {
+      if (role === "partner2") {
+        btnCopyInvite.innerHTML = `<i class="fa-solid fa-key"></i> Copy Partner 2 (Your) Recovery Code`;
+      } else {
+        btnCopyInvite.innerHTML = `<i class="fa-solid fa-key"></i> Copy Partner Sync Code (For SO)`;
+      }
+    }
+    if (btnCopyCreator) {
+      if (role === "partner2") {
+        btnCopyCreator.innerHTML = `<i class="fa-solid fa-user-shield"></i> Copy Creator Sync Code (For SO)`;
+      } else {
+        btnCopyCreator.innerHTML = `<i class="fa-solid fa-user-shield"></i> Copy Creator Recovery Code`;
+      }
+    }
+
     if (cloudModal) cloudModal.classList.remove("hidden");
   };
 
@@ -1218,15 +1239,17 @@ function initSettingsAndForms() {
           if (userAvatarInput) userAvatarInput.value = localSpaceData.partner2Avatar || "💖";
           if (partnerNameInput) partnerNameInput.value = localSpaceData.partner1Name || "";
           if (partnerAvatarInput) partnerAvatarInput.value = localSpaceData.partner1Avatar || "👤";
+          if (userBirthdayInput) userBirthdayInput.value = localSpaceData.partner2Birthday || "";
+          if (partnerBirthdayInput) partnerBirthdayInput.value = localSpaceData.partner1Birthday || "";
         } else {
           if (userNameInput) userNameInput.value = localSpaceData.partner1Name || "";
           if (userAvatarInput) userAvatarInput.value = localSpaceData.partner1Avatar || "👤";
           if (partnerNameInput) partnerNameInput.value = localSpaceData.partner2Name || "";
           if (partnerAvatarInput) partnerAvatarInput.value = localSpaceData.partner2Avatar || "💖";
+          if (userBirthdayInput) userBirthdayInput.value = localSpaceData.partner1Birthday || "";
+          if (partnerBirthdayInput) partnerBirthdayInput.value = localSpaceData.partner2Birthday || "";
         }
         if (anniversaryInput) anniversaryInput.value = localSpaceData.anniversaryDate || "";
-        if (userBirthdayInput) userBirthdayInput.value = localSpaceData.partner1Birthday || "";
-        if (partnerBirthdayInput) partnerBirthdayInput.value = localSpaceData.partner2Birthday || "";
       }
       if (settingsModal) settingsModal.classList.remove("hidden");
     });
@@ -1357,14 +1380,18 @@ function initSettingsAndForms() {
     formSettingsSubmit.addEventListener("submit", async (e) => {
       e.preventDefault();
       
+      const role = localStorage.getItem("hb_user_role") || "partner1";
+      const uBday = document.getElementById("settings-user-birthday").value;
+      const pBday = document.getElementById("settings-partner-birthday").value;
+
       const profile = {
         userName: document.getElementById("settings-user-name").value.trim(),
         userAvatar: document.getElementById("settings-user-avatar").value.trim(),
         partnerName: document.getElementById("settings-partner-name").value.trim(),
         partnerAvatar: document.getElementById("settings-partner-avatar").value.trim(),
         anniversaryDate: document.getElementById("settings-anniversary").value,
-        partner1Birthday: document.getElementById("settings-user-birthday").value,
-        partner2Birthday: document.getElementById("settings-partner-birthday").value
+        partner1Birthday: role === "partner2" ? pBday : uBday,
+        partner2Birthday: role === "partner2" ? uBday : pBday
       };
 
       await db.updateSpaceInfo(profile);
