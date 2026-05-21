@@ -349,7 +349,10 @@
             <label for="onboard-invite-code">Pasted Love Sync Code</label>
             <textarea id="onboard-invite-code" placeholder="Pasted hb_invite_..." rows="3" required style="width: 100%; padding: 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; font-family: monospace; font-size: 0.8rem; resize: none;"></textarea>
           </div>
-          <button type="submit" class="btn-primary btn-block">Connect & Sync Space ✨</button>
+            <div style="display: flex; gap: 10px;">
+              <button type="button" id="btn-login-creator" class="btn-secondary" style="flex: 1; font-size: 0.9rem;">Login as Creator</button>
+              <button type="button" id="btn-login-partner" class="btn-primary" style="flex: 1; font-size: 0.9rem;">Login as Partner</button>
+            </div>
         </form>
       </div>
 
@@ -675,7 +678,7 @@
   <!-- Core App Libraries -->
   <!-- We load Firebase JS SDK modularly or globally via web scripts. 
        Using the CDN modules below ensures we have everything needed. -->
-  <script src="database.js?v=6" type="module"></script>
-  <script src="app.js?v=6" type="module"></script>
+  <script src="database.js?v=7" type="module"></script>
+  <script src="app.js?v=7" type="module"></script>
 </body>
 </html>
