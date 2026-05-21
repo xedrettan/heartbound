@@ -1189,7 +1189,15 @@ function initSettingsAndForms() {
         db.clearDbConfig();
         localStorage.removeItem("hb_sandbox_profile");
         localStorage.removeItem("hb_user_role");
-        window.location.href = window.location.pathname; // Reload the page without query parameters
+        
+        // Immediately update UI while page reloads
+        const settingsModal = document.getElementById("modal-settings");
+        if (settingsModal) settingsModal.classList.add("hidden");
+        const onboardingModal = document.getElementById("modal-onboarding");
+        if (onboardingModal) onboardingModal.classList.remove("hidden");
+        
+        // Force hard reload to completely clear memory state
+        window.location.reload(true);
       }
     });
   }
