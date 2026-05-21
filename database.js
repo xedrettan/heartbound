@@ -5,7 +5,8 @@ import {
   getFirestore, 
   doc, 
   setDoc, 
-  getDoc, 
+  getDoc,
+  getDocs,
   updateDoc, 
   collection, 
   addDoc, 
@@ -410,6 +411,7 @@ class HeartboundDatabase {
           anniversaryDate: profileData.anniversaryDate,
           partnerBirthday: profileData.partnerBirthday
         });
+        await this.refreshSpaceInfo();
       } else if (provider === "supabase") {
         const { error } = await this.supabaseClient
           .from("spaces")
@@ -423,7 +425,7 @@ class HeartboundDatabase {
           })
           .eq("id", this.activeSpaceId);
         if (error) throw error;
-        this.refreshSpaceInfo();
+        await this.refreshSpaceInfo();
       }
     } else {
       // Local
@@ -539,6 +541,7 @@ class HeartboundDatabase {
         };
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "loves_hates");
         await addDoc(collRef, payload);
+        await this.refreshLovesHates();
       } else if (provider === "supabase") {
         const payload = {
           space_id: this.activeSpaceId,
@@ -551,7 +554,7 @@ class HeartboundDatabase {
           .from("loves_hates")
           .insert(payload);
         if (error) throw error;
-        this.refreshLovesHates();
+        await this.refreshLovesHates();
       }
     } else {
       // Local
@@ -576,13 +579,14 @@ class HeartboundDatabase {
       if (provider === "firebase") {
         const docRef = doc(this.firestore, "spaces", this.activeSpaceId, "loves_hates", id);
         await deleteDoc(docRef);
+        await this.refreshLovesHates();
       } else if (provider === "supabase") {
         const { error } = await this.supabaseClient
           .from("loves_hates")
           .delete()
           .eq("id", id);
         if (error) throw error;
-        this.refreshLovesHates();
+        await this.refreshLovesHates();
       }
     } else {
       // Local
@@ -663,6 +667,7 @@ class HeartboundDatabase {
         };
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "memories");
         await addDoc(collRef, payload);
+        await this.refreshMemories();
       } else if (provider === "supabase") {
         const payload = {
           space_id: this.activeSpaceId,
@@ -677,7 +682,7 @@ class HeartboundDatabase {
           .from("memories")
           .insert(payload);
         if (error) throw error;
-        this.refreshMemories();
+        await this.refreshMemories();
       }
     } else {
       // Local
@@ -704,13 +709,14 @@ class HeartboundDatabase {
       if (provider === "firebase") {
         const docRef = doc(this.firestore, "spaces", this.activeSpaceId, "memories", id);
         await deleteDoc(docRef);
+        await this.refreshMemories();
       } else if (provider === "supabase") {
         const { error } = await this.supabaseClient
           .from("memories")
           .delete()
           .eq("id", id);
         if (error) throw error;
-        this.refreshMemories();
+        await this.refreshMemories();
       }
     } else {
       // Local
@@ -729,6 +735,7 @@ class HeartboundDatabase {
         await updateDoc(docRef, {
           heartsCount: increment(1)
         });
+        await this.refreshMemories();
       } else if (provider === "supabase") {
         const { data, error: selectErr } = await this.supabaseClient
           .from("memories")
@@ -741,7 +748,7 @@ class HeartboundDatabase {
             .update({ hearts_count: (data.hearts_count || 0) + 1 })
             .eq("id", id);
           if (updateErr) throw updateErr;
-          this.refreshMemories();
+          await this.refreshMemories();
         }
       }
     } else {
@@ -825,6 +832,7 @@ class HeartboundDatabase {
         };
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "celebrations");
         await addDoc(collRef, payload);
+        await this.refreshEvents();
       } else if (provider === "supabase") {
         const payload = {
           space_id: this.activeSpaceId,
@@ -838,7 +846,7 @@ class HeartboundDatabase {
           .from("celebrations")
           .insert(payload);
         if (error) throw error;
-        this.refreshEvents();
+        await this.refreshEvents();
       }
     } else {
       // Local
@@ -864,13 +872,14 @@ class HeartboundDatabase {
       if (provider === "firebase") {
         const docRef = doc(this.firestore, "spaces", this.activeSpaceId, "celebrations", id);
         await deleteDoc(docRef);
+        await this.refreshEvents();
       } else if (provider === "supabase") {
         const { error } = await this.supabaseClient
           .from("celebrations")
           .delete()
           .eq("id", id);
         if (error) throw error;
-        this.refreshEvents();
+        await this.refreshEvents();
       }
     } else {
       // Local
@@ -887,13 +896,14 @@ class HeartboundDatabase {
       if (provider === "firebase") {
         const docRef = doc(this.firestore, "spaces", this.activeSpaceId, "celebrations", id);
         await updateDoc(docRef, { checklist: checklist });
+        await this.refreshEvents();
       } else if (provider === "supabase") {
         const { error } = await this.supabaseClient
           .from("celebrations")
           .update({ checklist: checklist })
           .eq("id", id);
         if (error) throw error;
-        this.refreshEvents();
+        await this.refreshEvents();
       }
     } else {
       // Local
@@ -908,10 +918,12 @@ class HeartboundDatabase {
   }
 
   // --- DIRECT REFRESH HELPER METHODS FOR DOUBLE-INSURANCE SYNC ---
+  // These methods support BOTH Firebase (via getDoc/getDocs) AND Supabase re-fetch.
   
   async refreshSpaceInfo() {
     if (!this.callbacks.space || !this.isPaired()) return;
-    if (this.isCloudMode()) {
+    if (!this.isCloudMode()) return;
+    try {
       const provider = this.getCloudProvider();
       if (provider === "supabase") {
         const { data, error } = await this.supabaseClient
@@ -919,16 +931,22 @@ class HeartboundDatabase {
           .select("*")
           .eq("id", this.activeSpaceId)
           .maybeSingle();
-        if (!error && data) {
-          this.callbacks.space(mapSpaceRow(data));
-        }
+        if (error) { console.error("refreshSpaceInfo Supabase error:", error); return; }
+        if (data) this.callbacks.space(mapSpaceRow(data));
+      } else if (provider === "firebase") {
+        const spaceDocRef = doc(this.firestore, "spaces", this.activeSpaceId);
+        const snap = await getDoc(spaceDocRef);
+        if (snap.exists()) this.callbacks.space(snap.data());
       }
+    } catch (e) {
+      console.error("refreshSpaceInfo failed:", e);
     }
   }
 
   async refreshLovesHates() {
     if (!this.callbacks.lovesHates || !this.isPaired()) return;
-    if (this.isCloudMode()) {
+    if (!this.isCloudMode()) return;
+    try {
       const provider = this.getCloudProvider();
       if (provider === "supabase") {
         const { data, error } = await this.supabaseClient
@@ -936,16 +954,25 @@ class HeartboundDatabase {
           .select("*")
           .eq("space_id", this.activeSpaceId)
           .order("created_at", { ascending: false });
-        if (!error && data) {
-          this.callbacks.lovesHates(data.map(mapLoveHateRow));
-        }
+        if (error) { console.error("refreshLovesHates Supabase error:", error); return; }
+        if (data) this.callbacks.lovesHates(data.map(mapLoveHateRow));
+      } else if (provider === "firebase") {
+        const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "loves_hates");
+        const q = query(collRef, orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+        const items = [];
+        snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        this.callbacks.lovesHates(items);
       }
+    } catch (e) {
+      console.error("refreshLovesHates failed:", e);
     }
   }
 
   async refreshMemories() {
     if (!this.callbacks.memories || !this.isPaired()) return;
-    if (this.isCloudMode()) {
+    if (!this.isCloudMode()) return;
+    try {
       const provider = this.getCloudProvider();
       if (provider === "supabase") {
         const { data, error } = await this.supabaseClient
@@ -953,16 +980,25 @@ class HeartboundDatabase {
           .select("*")
           .eq("space_id", this.activeSpaceId)
           .order("date", { ascending: false });
-        if (!error && data) {
-          this.callbacks.memories(data.map(mapMemoryRow));
-        }
+        if (error) { console.error("refreshMemories Supabase error:", error); return; }
+        if (data) this.callbacks.memories(data.map(mapMemoryRow));
+      } else if (provider === "firebase") {
+        const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "memories");
+        const q = query(collRef, orderBy("date", "desc"));
+        const snap = await getDocs(q);
+        const items = [];
+        snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        this.callbacks.memories(items);
       }
+    } catch (e) {
+      console.error("refreshMemories failed:", e);
     }
   }
 
   async refreshEvents() {
     if (!this.callbacks.events || !this.isPaired()) return;
-    if (this.isCloudMode()) {
+    if (!this.isCloudMode()) return;
+    try {
       const provider = this.getCloudProvider();
       if (provider === "supabase") {
         const { data, error } = await this.supabaseClient
@@ -970,11 +1006,31 @@ class HeartboundDatabase {
           .select("*")
           .eq("space_id", this.activeSpaceId)
           .order("date", { ascending: true });
-        if (!error && data) {
-          this.callbacks.events(data.map(mapCelebrationRow));
-        }
+        if (error) { console.error("refreshEvents Supabase error:", error); return; }
+        if (data) this.callbacks.events(data.map(mapCelebrationRow));
+      } else if (provider === "firebase") {
+        const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "celebrations");
+        const q = query(collRef, orderBy("date", "asc"));
+        const snap = await getDocs(q);
+        const items = [];
+        snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        this.callbacks.events(items);
       }
+    } catch (e) {
+      console.error("refreshEvents failed:", e);
     }
+  }
+
+  // Nuclear refresh: re-fetch ALL collections from the active cloud provider
+  async forceRefreshAll() {
+    console.log("forceRefreshAll triggered — re-fetching all data nodes...");
+    await Promise.allSettled([
+      this.refreshSpaceInfo(),
+      this.refreshLovesHates(),
+      this.refreshMemories(),
+      this.refreshEvents()
+    ]);
+    console.log("forceRefreshAll complete.");
   }
 
   generateInviteCode() {

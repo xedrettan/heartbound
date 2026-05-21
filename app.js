@@ -1163,6 +1163,8 @@ function initSettingsAndForms() {
 
     await db.updateSpaceInfo(profile);
     settingsModal.classList.add("hidden");
+    // Safety-net: delayed full re-fetch in case primary refresh was missed
+    setTimeout(() => db.forceRefreshAll(), 400);
   });
 
   // 3. Add/Edit Preference
@@ -1183,6 +1185,8 @@ function initSettingsAndForms() {
     await db.addLoveHate(payload);
     
     prefModal.classList.add("hidden");
+    // Safety-net: delayed full re-fetch in case primary refresh was missed
+    setTimeout(() => db.forceRefreshAll(), 400);
   });
 
   // 4. Memory Submission
@@ -1200,6 +1204,8 @@ function initSettingsAndForms() {
 
     await db.addMemory(payload);
     memoryModal.classList.add("hidden");
+    // Safety-net: delayed full re-fetch in case primary refresh was missed
+    setTimeout(() => db.forceRefreshAll(), 400);
   });
 
   // 5. Add Celebration Birthday event
@@ -1215,6 +1221,8 @@ function initSettingsAndForms() {
 
     await db.addEvent(payload);
     celModal.classList.add("hidden");
+    // Safety-net: delayed full re-fetch in case primary refresh was missed
+    setTimeout(() => db.forceRefreshAll(), 400);
   });
 
   // 6. Add Trip Adventure event
@@ -1230,6 +1238,8 @@ function initSettingsAndForms() {
 
     await db.addEvent(payload);
     tripModal.classList.add("hidden");
+    // Safety-net: delayed full re-fetch in case primary refresh was missed
+    setTimeout(() => db.forceRefreshAll(), 400);
   });
 
   // 7. Connect Database Config Credentials
