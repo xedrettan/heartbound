@@ -1187,6 +1187,8 @@ function initSettingsAndForms() {
     btnLogout.addEventListener("click", () => {
       if (confirm("Are you sure you want to log out from this space? You will need your Sync Code to rejoin.")) {
         db.clearDbConfig();
+        localStorage.removeItem("hb_sandbox_profile");
+        localStorage.removeItem("hb_user_role");
         window.location.href = window.location.pathname; // Reload the page without query parameters
       }
     });
