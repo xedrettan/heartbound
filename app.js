@@ -965,13 +965,9 @@ function initSettingsAndForms() {
         const success = db.bootstrapFromInviteCode(code);
         if (success) {
           localStorage.setItem("hb_user_role", "partner2"); // Mark joining user as partner2
-          // Show simplified partner welcome step
-          const onboardTabs = document.getElementById("onboard-tabs");
-          const formPartnerSetup = document.getElementById("form-partner-setup");
-          if (onboardTabs) onboardTabs.classList.add("hidden");
-          formOnboarding.classList.add("hidden");
-          panelJoinSpace.classList.add("hidden");
-          if (formPartnerSetup) formPartnerSetup.classList.remove("hidden");
+          // Skip the secondary setup step. The Creator already set the partner's name and avatar in the DB!
+          onboardingModal.classList.add("hidden");
+          setupRealtimeSubscriptions();
         } else {
           alert("Failed to connect using that Invite Code. Please verify the code string!");
         }
