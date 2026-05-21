@@ -2,6 +2,25 @@
 
 import { db } from "./database.js";
 
+// Safe LocalDate parser to prevent Safari timezone date slips (treating YYYY-MM-DD as local instead of UTC)
+function parseLocalDate(dateStr) {
+  if (!dateStr) return new Date(NaN);
+  if (dateStr instanceof Date) return dateStr;
+  if (typeof dateStr === 'number') return new Date(dateStr);
+  
+  const parts = String(dateStr).split("-");
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // 0-based
+    const day = parseInt(parts[2], 10);
+    if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+      return new Date(year, month, day);
+    }
+  }
+  const parsed = new Date(dateStr);
+  return parsed;
+}
+
 // --- GLOBAL VARIABLES & DATA STORE ---
 let localSpaceData = null;
 let localLovesHates = [];
@@ -230,14 +249,25 @@ function updateProfileUI() {
 
   // Days Together Ticker
   if (localSpaceData.anniversaryDate) {
-    const anniversary = new Date(localSpaceData.anniversaryDate);
-    const today = new Date();
-    const diffTime = Math.abs(today - anniversary);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    // Animate the ticker count!
-    animateTicker("dash-days-together", diffDays);
-    document.getElementById("nav-days-badge").innerText = `${diffDays} Days Together`;
+    const anniversary = parseLocalDate(localSpaceData.anniversaryDate);
+    if (!isNaN(anniversary.getTime())) {
+      const today = new Date();
+      // Zero out time fields to get the exact midnight-to-midnight difference in local time
+      const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const anniversaryZero = new Date(anniversary.getFullYear(), anniversary.getMonth(), anniversary.getDate());
+      const diffTime = Math.abs(todayZero - anniversaryZero);
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Animate the ticker count!
+      animateTicker("dash-days-together", diffDays);
+      document.getElementById("nav-days-badge").innerText = `${diffDays} Days Together`;
+    } else {
+      document.getElementById("dash-days-together").innerText = "--";
+      document.getElementById("nav-days-badge").innerText = "Not Paired";
+    }
+  } else {
+    document.getElementById("dash-days-together").innerText = "--";
+    document.getElementById("nav-days-badge").innerText = "Not Paired";
   }
 }
 
@@ -258,33 +288,41 @@ function updateCountdownUI() {
   const countdownDateEl = document.getElementById("countdown-event-date");
 
   const today = new Date();
+  const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   let candidateEvents = [];
 
   // 1. Partner's Birthday
   if (localSpaceData.partnerBirthday) {
     const birthdayStr = localSpaceData.partnerBirthday;
-    const [bYear, bMonth, bDay] = birthdayStr.split("-").map(Number);
-    let nextBday = new Date(today.getFullYear(), bMonth - 1, bDay);
-    
-    if (nextBday < today) {
-      nextBday.setFullYear(today.getFullYear() + 1);
+    const parts = birthdayStr.split("-").map(Number);
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      const [bYear, bMonth, bDay] = parts;
+      let nextBday = new Date(todayZero.getFullYear(), bMonth - 1, bDay);
+      
+      if (nextBday < todayZero) {
+        nextBday.setFullYear(todayZero.getFullYear() + 1);
+      }
+      candidateEvents.push({
+        title: `${localSpaceData.partner2Name}'s Birthday 🎂`,
+        date: nextBday,
+        displayDate: nextBday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      });
     }
-    candidateEvents.push({
-      title: `${localSpaceData.partner2Name}'s Birthday 🎂`,
-      date: nextBday,
-      displayDate: nextBday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    });
   }
 
   // 2. Scheduled Trip or celebration events
   localEvents.forEach(evt => {
-    const evtDate = new Date(evt.date);
-    if (evtDate >= today) {
-      candidateEvents.push({
-        title: evt.type === "trip" ? `Trip to ${evt.title} ✈️` : `${evt.title} 🎈`,
-        date: evtDate,
-        displayDate: evtDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-      });
+    if (!evt.date) return;
+    const evtDate = parseLocalDate(evt.date);
+    if (!isNaN(evtDate.getTime())) {
+      const evtDateZero = new Date(evtDate.getFullYear(), evtDate.getMonth(), evtDate.getDate());
+      if (evtDateZero >= todayZero) {
+        candidateEvents.push({
+          title: evt.type === "trip" ? `Trip to ${evt.title} ✈️` : `${evt.title} 🎈`,
+          date: evtDateZero,
+          displayDate: evtDateZero.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        });
+      }
     }
   });
 
@@ -293,10 +331,14 @@ function updateCountdownUI() {
     candidateEvents.sort((a,b) => a.date - b.date);
     const nextEvent = candidateEvents[0];
     
-    const diffTime = Math.abs(nextEvent.date - today);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffTime = Math.abs(nextEvent.date - todayZero);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    countdownDaysEl.innerText = String(diffDays).padStart(2, '0');
+    if (isNaN(diffDays)) {
+      countdownDaysEl.innerText = "--";
+    } else {
+      countdownDaysEl.innerText = String(diffDays).padStart(2, '0');
+    }
     countdownTitleEl.innerText = nextEvent.title;
     countdownDateEl.innerText = nextEvent.displayDate;
   } else {
@@ -527,11 +569,10 @@ function renderMemories() {
       item.className = "timeline-item";
       
       const cover = memory.coverUrl || activeMemoryCoverUrl;
-      const formattedDate = new Date(memory.date).toLocaleDateString('en-US', { 
-        month: 'long', 
-        day: 'numeric', 
-        year: 'numeric' 
-      });
+      const memoryDate = parseLocalDate(memory.date);
+      const formattedDate = !isNaN(memoryDate.getTime()) 
+        ? memoryDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : "Unknown Date";
 
       item.innerHTML = `
         <div class="timeline-node"></div>
@@ -638,11 +679,10 @@ function renderEvents() {
     const card = document.createElement("div");
     card.className = "adventure-card celebration-card";
     
-    const formattedDate = new Date(cel.date).toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
+    const celDate = parseLocalDate(cel.date);
+    const formattedDate = !isNaN(celDate.getTime())
+      ? celDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      : "Unknown Date";
 
     const isGiftChecklist = cel.checklist && cel.checklist.length > 0;
     const progress = calculateChecklistProgress(cel.checklist);
@@ -705,11 +745,10 @@ function renderEvents() {
     const card = document.createElement("div");
     card.className = "adventure-card trip-card";
     
-    const formattedDate = new Date(trip.date).toLocaleDateString('en-US', { 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
+    const tripDate = parseLocalDate(trip.date);
+    const formattedDate = !isNaN(tripDate.getTime())
+      ? tripDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      : "Unknown Date";
 
     const progress = calculateChecklistProgress(trip.checklist);
 
@@ -826,7 +865,7 @@ function initSettingsAndForms() {
   });
 
   // Open buttons
-  document.getElementById("btn-open-sync").addEventListener("click", () => {
+  const openSyncModal = () => {
     if (db.dbConfig) {
       const provider = db.dbConfig.provider || "firebase";
       document.getElementById("db-provider").value = provider;
@@ -845,7 +884,14 @@ function initSettingsAndForms() {
       toggleDbInputs("firebase");
     }
     cloudModal.classList.remove("hidden");
-  });
+  };
+
+  document.getElementById("btn-open-sync").addEventListener("click", openSyncModal);
+  
+  const btnOpenSyncMobile = document.getElementById("btn-open-sync-mobile");
+  if (btnOpenSyncMobile) {
+    btnOpenSyncMobile.addEventListener("click", openSyncModal);
+  }
 
   document.getElementById("btn-quick-settings").addEventListener("click", () => {
     if (localSpaceData) {

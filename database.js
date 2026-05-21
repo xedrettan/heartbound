@@ -66,6 +66,14 @@ class HeartboundDatabase {
     this.dbConfig = null;
     this.onStatusChangeCallback = null;
     
+    // Active callbacks for manual refreshes (Double-Insurance Sync)
+    this.callbacks = {
+      space: null,
+      lovesHates: null,
+      memories: null,
+      events: null
+    };
+
     // Live subscriptions storage to permit quick cleanup
     this.subscriptions = {
       space: null,
@@ -324,6 +332,7 @@ class HeartboundDatabase {
 
   // 1. Relationship Profile / Space Metadata
   subscribeSpaceInfo(onUpdate) {
+    this.callbacks.space = onUpdate;
     if (!this.isPaired()) return;
 
     if (this.isCloudMode()) {
@@ -353,7 +362,7 @@ class HeartboundDatabase {
         const channel = this.supabaseClient.channel("space-changes")
           .on("postgres_changes", { event: "*", schema: "public", table: "spaces" }, (payload) => {
             const rowId = (payload.new && payload.new.id) || (payload.old && payload.old.id);
-            if (rowId === this.activeSpaceId) {
+            if (!rowId || rowId === this.activeSpaceId) {
               fetchAndEmit();
             }
           })
@@ -401,6 +410,7 @@ class HeartboundDatabase {
           })
           .eq("id", this.activeSpaceId);
         if (error) throw error;
+        this.refreshSpaceInfo();
       }
     } else {
       // Local
@@ -411,6 +421,7 @@ class HeartboundDatabase {
 
   // 2. Loves & Hates
   subscribeLovesHates(onUpdate) {
+    this.callbacks.lovesHates = onUpdate;
     if (this.isCloudMode() && this.isPaired()) {
       const provider = this.getCloudProvider();
       if (provider === "firebase") {
@@ -439,7 +450,7 @@ class HeartboundDatabase {
         const channel = this.supabaseClient.channel("lh-changes")
           .on("postgres_changes", { event: "*", schema: "public", table: "loves_hates" }, (payload) => {
             const rowSpaceId = (payload.new && payload.new.space_id) || (payload.old && payload.old.space_id);
-            if (rowSpaceId === this.activeSpaceId) {
+            if (!rowSpaceId || rowSpaceId === this.activeSpaceId) {
               fetchAndEmit();
             }
           })
@@ -486,6 +497,7 @@ class HeartboundDatabase {
           .from("loves_hates")
           .insert(payload);
         if (error) throw error;
+        this.refreshLovesHates();
       }
     } else {
       // Local
@@ -516,6 +528,7 @@ class HeartboundDatabase {
           .delete()
           .eq("id", id);
         if (error) throw error;
+        this.refreshLovesHates();
       }
     } else {
       // Local
@@ -528,6 +541,7 @@ class HeartboundDatabase {
 
   // 3. Memory Lane
   subscribeMemories(onUpdate) {
+    this.callbacks.memories = onUpdate;
     if (this.isCloudMode() && this.isPaired()) {
       const provider = this.getCloudProvider();
       if (provider === "firebase") {
@@ -556,7 +570,7 @@ class HeartboundDatabase {
         const channel = this.supabaseClient.channel("mem-changes")
           .on("postgres_changes", { event: "*", schema: "public", table: "memories" }, (payload) => {
             const rowSpaceId = (payload.new && payload.new.space_id) || (payload.old && payload.old.space_id);
-            if (rowSpaceId === this.activeSpaceId) {
+            if (!rowSpaceId || rowSpaceId === this.activeSpaceId) {
               fetchAndEmit();
             }
           })
@@ -609,6 +623,7 @@ class HeartboundDatabase {
           .from("memories")
           .insert(payload);
         if (error) throw error;
+        this.refreshMemories();
       }
     } else {
       // Local
@@ -641,6 +656,7 @@ class HeartboundDatabase {
           .delete()
           .eq("id", id);
         if (error) throw error;
+        this.refreshMemories();
       }
     } else {
       // Local
@@ -671,6 +687,7 @@ class HeartboundDatabase {
             .update({ hearts_count: (data.hearts_count || 0) + 1 })
             .eq("id", id);
           if (updateErr) throw updateErr;
+          this.refreshMemories();
         }
       }
     } else {
@@ -687,6 +704,7 @@ class HeartboundDatabase {
 
   // 4. Adventures (Trips & Milestones)
   subscribeEvents(onUpdate) {
+    this.callbacks.events = onUpdate;
     if (this.isCloudMode() && this.isPaired()) {
       const provider = this.getCloudProvider();
       if (provider === "firebase") {
@@ -715,7 +733,7 @@ class HeartboundDatabase {
         const channel = this.supabaseClient.channel("cel-changes")
           .on("postgres_changes", { event: "*", schema: "public", table: "celebrations" }, (payload) => {
             const rowSpaceId = (payload.new && payload.new.space_id) || (payload.old && payload.old.space_id);
-            if (rowSpaceId === this.activeSpaceId) {
+            if (!rowSpaceId || rowSpaceId === this.activeSpaceId) {
               fetchAndEmit();
             }
           })
@@ -766,6 +784,7 @@ class HeartboundDatabase {
           .from("celebrations")
           .insert(payload);
         if (error) throw error;
+        this.refreshEvents();
       }
     } else {
       // Local
@@ -797,6 +816,7 @@ class HeartboundDatabase {
           .delete()
           .eq("id", id);
         if (error) throw error;
+        this.refreshEvents();
       }
     } else {
       // Local
@@ -819,6 +839,7 @@ class HeartboundDatabase {
           .update({ checklist: checklist })
           .eq("id", id);
         if (error) throw error;
+        this.refreshEvents();
       }
     } else {
       // Local
@@ -828,6 +849,76 @@ class HeartboundDatabase {
         events[index].checklist = checklist;
         localStorage.setItem("hb_sandbox_events", JSON.stringify(events));
         window.dispatchEvent(new Event("hb_local_events_updated"));
+      }
+    }
+  }
+
+  // --- DIRECT REFRESH HELPER METHODS FOR DOUBLE-INSURANCE SYNC ---
+  
+  async refreshSpaceInfo() {
+    if (!this.callbacks.space || !this.isPaired()) return;
+    if (this.isCloudMode()) {
+      const provider = this.getCloudProvider();
+      if (provider === "supabase") {
+        const { data, error } = await this.supabaseClient
+          .from("spaces")
+          .select("*")
+          .eq("id", this.activeSpaceId)
+          .maybeSingle();
+        if (!error && data) {
+          this.callbacks.space(mapSpaceRow(data));
+        }
+      }
+    }
+  }
+
+  async refreshLovesHates() {
+    if (!this.callbacks.lovesHates || !this.isPaired()) return;
+    if (this.isCloudMode()) {
+      const provider = this.getCloudProvider();
+      if (provider === "supabase") {
+        const { data, error } = await this.supabaseClient
+          .from("loves_hates")
+          .select("*")
+          .eq("space_id", this.activeSpaceId)
+          .order("created_at", { ascending: false });
+        if (!error && data) {
+          this.callbacks.lovesHates(data.map(mapLoveHateRow));
+        }
+      }
+    }
+  }
+
+  async refreshMemories() {
+    if (!this.callbacks.memories || !this.isPaired()) return;
+    if (this.isCloudMode()) {
+      const provider = this.getCloudProvider();
+      if (provider === "supabase") {
+        const { data, error } = await this.supabaseClient
+          .from("memories")
+          .select("*")
+          .eq("space_id", this.activeSpaceId)
+          .order("date", { ascending: false });
+        if (!error && data) {
+          this.callbacks.memories(data.map(mapMemoryRow));
+        }
+      }
+    }
+  }
+
+  async refreshEvents() {
+    if (!this.callbacks.events || !this.isPaired()) return;
+    if (this.isCloudMode()) {
+      const provider = this.getCloudProvider();
+      if (provider === "supabase") {
+        const { data, error } = await this.supabaseClient
+          .from("celebrations")
+          .select("*")
+          .eq("space_id", this.activeSpaceId)
+          .order("date", { ascending: true });
+        if (!error && data) {
+          this.callbacks.events(data.map(mapCelebrationRow));
+        }
       }
     }
   }

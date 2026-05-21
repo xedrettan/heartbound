@@ -40,13 +40,15 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 body {
   font-family: var(--font-sans);
   background: radial-gradient(circle at center, var(--bg-gradient-top) 0%, var(--bg-gradient-bottom) 100%);
   color: var(--text-main);
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   position: relative;
 }
@@ -89,7 +91,7 @@ button, input, select, textarea {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
@@ -123,7 +125,7 @@ button, input, select, textarea {
 /* App Layout Frame */
 .app-container {
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   z-index: 1;
 }
@@ -140,7 +142,7 @@ button, input, select, textarea {
   flex-direction: column;
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: 100dvh;
 }
 
 .sidebar-brand {
@@ -410,6 +412,10 @@ button, input, select, textarea {
   transform: rotate(30deg);
 }
 
+.mobile-sync-btn {
+  display: none !important;
+}
+
 /* Core SPA View System */
 .app-view {
   display: none;
@@ -580,7 +586,7 @@ button, input, select, textarea {
   top: 0;
   left: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   background: rgba(14, 5, 12, 0.7);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -1714,33 +1720,69 @@ button, input, select, textarea {
 @media (max-width: 768px) {
   .app-container {
     flex-direction: column;
+    min-height: 100dvh;
   }
   .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
     width: 100%;
-    height: auto;
-    position: relative;
+    height: calc(60px + env(safe-area-inset-bottom));
+    padding: 6px 12px calc(6px + env(safe-area-inset-bottom)) 12px;
     border-right: none;
-    border-bottom: 1px solid var(--glass-border);
-    padding: 20px;
+    border-top: 1px solid var(--glass-border);
+    border-bottom: none;
+    z-index: 1000;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    background: rgba(14, 5, 12, 0.95);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
   }
-  .main-content {
-    width: 100%;
-    padding: 20px;
+  .sidebar-brand,
+  .partner-mini-profile,
+  .sidebar-footer {
+    display: none !important;
   }
   .sidebar-nav {
     flex-direction: row;
-    overflow-x: auto;
-    gap: 12px;
-    padding-bottom: 10px;
+    width: 100%;
+    justify-content: space-around;
+    gap: 0;
+    padding-bottom: 0;
   }
   .nav-item {
-    padding: 8px 12px;
-    font-size: 14px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 6px;
+    font-size: 10px;
+    border-left: none !important;
+    border-bottom: none !important;
+    border-radius: 8px;
+    color: var(--text-muted);
+    flex: 1;
+    text-align: center;
     flex-shrink: 0;
   }
+  .nav-item i {
+    font-size: 16px;
+  }
+  .nav-item:hover i {
+    transform: translateY(-1px);
+  }
   .nav-item.active {
-    border-left: none;
-    border-bottom: 3px solid var(--primary-color);
+    background: rgba(255, 107, 139, 0.12);
+    color: var(--primary-color);
+  }
+  .main-content {
+    width: 100%;
+    padding: 20px 20px calc(80px + env(safe-area-inset-bottom)) 20px;
+  }
+  .mobile-sync-btn {
+    display: flex !important;
   }
   .timeline-line {
     left: 20px;
@@ -1763,6 +1805,15 @@ button, input, select, textarea {
   }
   .form-row-split {
     grid-template-columns: 1fr;
+  }
+  /* On iPhone models, modals should align closer to the center/bottom, and have clear tap spaces */
+  .glass-modal {
+    padding: 24px 20px;
+    border-radius: 20px;
+    margin: 10px;
+  }
+  .modal-overlay {
+    padding: 10px;
   }
 }
 
