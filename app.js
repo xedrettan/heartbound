@@ -84,18 +84,18 @@ function handleConnectionStatusChange(status, spaceId) {
   const inputPairCode = document.getElementById("input-pair-code");
   const btnSubmitPair = document.getElementById("btn-submit-pair");
   
-  const btnCopyInviteLink = document.getElementById("btn-copy-invite-link");
   const btnCopyInviteCode = document.getElementById("btn-copy-invite-code");
+  const btnCopyCreatorCode = document.getElementById("btn-copy-creator-code");
 
   if (status === "sandbox") {
     badge.classList.add("sandbox");
     badgeText.innerText = "Sandbox Mode";
     pairPanel.classList.add("disabled");
-    displayCode.innerText = "--------";
-    btnCopy.disabled = true;
+    if (displayCode) displayCode.innerText = "--------";
+    if (btnCopy) btnCopy.disabled = true;
     inputPairCode.disabled = true;
     btnSubmitPair.disabled = true;
-    if (btnCopyInviteLink) btnCopyInviteLink.disabled = true;
+    if (btnCopyCreatorCode) btnCopyCreatorCode.disabled = true;
     if (btnCopyInviteCode) btnCopyInviteCode.disabled = true;
     
     // Check if sandbox onboarding exists
@@ -111,9 +111,9 @@ function handleConnectionStatusChange(status, spaceId) {
     if (status === "cloud_connected") {
       badge.classList.add("cloud");
       badgeText.innerText = `${providerName} Connected (Not Paired)`;
-      displayCode.innerText = "Generating...";
-      btnCopy.disabled = true;
-      if (btnCopyInviteLink) btnCopyInviteLink.disabled = true;
+      if (displayCode) displayCode.innerText = "Generating...";
+      if (btnCopy) btnCopy.disabled = true;
+      if (btnCopyCreatorCode) btnCopyCreatorCode.disabled = true;
       if (btnCopyInviteCode) btnCopyInviteCode.disabled = true;
       
       // Auto-create space document if none exists
@@ -121,9 +121,9 @@ function handleConnectionStatusChange(status, spaceId) {
     } else if (status === "paired") {
       badge.classList.add("paired");
       badgeText.innerText = `${providerName} Paired: ${spaceId}`;
-      displayCode.innerText = spaceId;
-      btnCopy.disabled = false;
-      if (btnCopyInviteLink) btnCopyInviteLink.disabled = false;
+      if (displayCode) displayCode.innerText = spaceId;
+      if (btnCopy) btnCopy.disabled = false;
+      if (btnCopyCreatorCode) btnCopyCreatorCode.disabled = false;
       if (btnCopyInviteCode) btnCopyInviteCode.disabled = false;
       
       // Setup Live Listeners
@@ -964,29 +964,23 @@ function initSettingsAndForms() {
 
   // Paste Love Sync Code Form Submit
   const formJoinInvite = document.getElementById("form-join-invite");
-  const btnLoginCreator = document.getElementById("btn-login-creator");
-  const btnLoginPartner = document.getElementById("btn-login-partner");
-
-  const processInvite = (role) => {
-    const code = document.getElementById("onboard-invite-code").value.trim();
-    if (code) {
-      const success = db.bootstrapFromInviteCode(code);
-      if (success) {
-        localStorage.setItem("hb_user_role", role); // Mark joining user as partner1 (Creator) or partner2 (Partner)
-        // Skip the secondary setup step. The Creator already set the partner's name and avatar in the DB!
-        onboardingModal.classList.add("hidden");
-        setupRealtimeSubscriptions();
-      } else {
-        alert("Failed to connect using that Invite Code. Please verify the code string!");
-      }
-    }
-  };
-
+  
   if (formJoinInvite) {
-    formJoinInvite.addEventListener("submit", (e) => e.preventDefault()); // Prevent normal submit
+    formJoinInvite.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const code = document.getElementById("onboard-invite-code").value.trim();
+      if (code) {
+        const success = db.bootstrapFromInviteCode(code);
+        if (success) {
+          // Note: localStorage role is now correctly read from the decoded payload inside bootstrapFromInviteCode!
+          onboardingModal.classList.add("hidden");
+          setupRealtimeSubscriptions();
+        } else {
+          alert("Failed to connect using that Love Sync Code. Please verify the code string!");
+        }
+      }
+    });
   }
-  if (btnLoginCreator) btnLoginCreator.addEventListener("click", () => processInvite("partner1"));
-  if (btnLoginPartner) btnLoginPartner.addEventListener("click", () => processInvite("partner2"));
 
   // Simplified Partner welcome details submit
   const formPartnerSetup = document.getElementById("form-partner-setup");
@@ -1188,6 +1182,16 @@ function initSettingsAndForms() {
     setTimeout(() => db.forceRefreshAll(), 400);
   });
 
+  const btnLogout = document.getElementById("btn-logout");
+  if (btnLogout) {
+    btnLogout.addEventListener("click", () => {
+      if (confirm("Are you sure you want to log out from this space? You will need your Sync Code to rejoin.")) {
+        db.clearDbConfig();
+        window.location.href = window.location.pathname; // Reload the page without query parameters
+      }
+    });
+  }
+
   // 3. Add/Edit Preference
   document.getElementById("form-preference").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -1338,14 +1342,25 @@ function initSettingsAndForms() {
   const btnCopyInviteCode = document.getElementById("btn-copy-invite-code");
   if (btnCopyInviteCode) {
     btnCopyInviteCode.addEventListener("click", () => {
-      const token = db.generateInviteCode();
+      const token = db.generateInviteCode("partner2"); // Generate code encoded as partner
       if (token) {
-        navigator.clipboard.writeText(token).then(() => {
-          btnCopyInviteCode.innerHTML = `<i class="fa-solid fa-circle-check"></i> Code Copied!`;
-          setTimeout(() => {
-            btnCopyInviteCode.innerHTML = `<i class="fa-solid fa-key"></i> Copy Sync Code`;
-          }, 2000);
-        });
+        navigator.clipboard.writeText(token);
+        const icon = btnCopyInviteCode.querySelector("i");
+        icon.className = "fa-solid fa-check";
+        setTimeout(() => icon.className = "fa-solid fa-key", 2000);
+      }
+    });
+  }
+
+  const btnCopyCreatorCode = document.getElementById("btn-copy-creator-code");
+  if (btnCopyCreatorCode) {
+    btnCopyCreatorCode.addEventListener("click", () => {
+      const token = db.generateInviteCode("partner1"); // Generate code encoded as creator
+      if (token) {
+        navigator.clipboard.writeText(token);
+        const icon = btnCopyCreatorCode.querySelector("i");
+        icon.className = "fa-solid fa-check";
+        setTimeout(() => icon.className = "fa-solid fa-user-shield", 2000);
       }
     });
   }

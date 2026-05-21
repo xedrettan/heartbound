@@ -355,10 +355,7 @@
             <label for="onboard-invite-code">Pasted Love Sync Code</label>
             <textarea id="onboard-invite-code" placeholder="Pasted hb_invite_..." rows="3" required style="width: 100%; padding: 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; font-family: monospace; font-size: 0.8rem; resize: none;"></textarea>
           </div>
-            <div style="display: flex; gap: 10px;">
-              <button type="button" id="btn-login-creator" class="btn-secondary" style="flex: 1; font-size: 0.9rem;">Login as Creator</button>
-              <button type="button" id="btn-login-partner" class="btn-primary" style="flex: 1; font-size: 0.9rem;">Login as Partner</button>
-            </div>
+            <button type="submit" class="btn-primary btn-block">Connect & Sync Space ✨</button>
         </form>
       </div>
 
@@ -452,19 +449,13 @@
           <p class="pairing-sub">Once your database is connected, pair your spaces to sync in real-time!</p>
           
           <div class="space-code-generator">
-            <span class="code-label">Your Space Code:</span>
-            <div class="code-display-row">
-              <code id="display-space-code">--------</code>
-              <button class="btn-secondary btn-small" id="btn-copy-code" disabled>
-                <i class="fa-solid fa-copy"></i> Copy
+            <span class="code-label">Recovery & Sync Codes:</span>
+            <div class="invite-links-row" style="margin-top: 8px; display: flex; gap: 8px; flex-direction: column;">
+              <button class="btn-primary btn-block" id="btn-copy-invite-code" disabled>
+                <i class="fa-solid fa-key"></i> Copy Partner Code
               </button>
-            </div>
-            <div class="invite-links-row" style="margin-top: 12px; display: flex; gap: 8px;">
-              <button class="btn-primary btn-small" id="btn-copy-invite-link" disabled style="flex: 1; font-size: 0.85rem; padding: 6px 10px;">
-                <i class="fa-solid fa-share-nodes"></i> Copy Invite Link
-              </button>
-              <button class="btn-secondary btn-small" id="btn-copy-invite-code" disabled style="flex: 1; font-size: 0.85rem; padding: 6px 10px;">
-                <i class="fa-solid fa-key"></i> Copy Sync Code
+              <button class="btn-secondary btn-block" id="btn-copy-creator-code" disabled>
+                <i class="fa-solid fa-user-shield"></i> Copy Creator Recovery Code
               </button>
             </div>
           </div>
@@ -682,15 +673,16 @@
           </div>
         </div>
 
-        <button type="submit" class="btn-primary btn-block">Update Settings ⚙️</button>
-      </form>
+          <button type="submit" class="btn-primary btn-block">Update Settings ✨</button>
+          <button type="button" id="btn-logout" class="btn-secondary btn-block" style="margin-top: 10px; background: rgba(255, 50, 50, 0.2); border-color: rgba(255, 50, 50, 0.4); color: #ff8888;"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</button>
+        </form>
     </div>
   </div>
 
   <!-- Core App Libraries -->
   <!-- We load Firebase JS SDK modularly or globally via web scripts. 
        Using the CDN modules below ensures we have everything needed. -->
-  <script src="database.js?v=8" type="module"></script>
-  <script src="app.js?v=8" type="module"></script>
+  <script src="database.js?v=9" type="module"></script>
+  <script src="app.js?v=9" type="module"></script>
 </body>
 </html>

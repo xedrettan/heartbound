@@ -1075,13 +1075,14 @@ class HeartboundDatabase {
     console.log("forceRefreshAll complete.");
   }
 
-  generateInviteCode() {
+  generateInviteCode(role = "partner2") {
     if (!this.isCloudMode() || !this.isPaired()) return null;
     try {
       const provider = this.getCloudProvider();
       let payload = {
         p: provider,
-        s: this.activeSpaceId
+        s: this.activeSpaceId,
+        r: role
       };
       
       if (provider === "supabase") {
@@ -1134,7 +1135,7 @@ class HeartboundDatabase {
       // Save configuration
       localStorage.setItem("hb_db_config", JSON.stringify(config));
       localStorage.setItem("hb_space_id", payload.s);
-      localStorage.setItem("hb_user_role", "partner2"); // Active user is the invited partner
+      localStorage.setItem("hb_user_role", payload.r || "partner2"); // Active user is based on encoded role, defaulting to partner2
       
       this.dbConfig = config;
       this.activeSpaceId = payload.s;
