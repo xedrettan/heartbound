@@ -239,10 +239,10 @@ class HeartboundDatabase {
       try {
         const spaceDocRef = doc(this.firestore, "spaces", newSpaceId);
         const spacePayload = {
-          partner1Name: profileData.userName || "Alex",
-          partner1Avatar: profileData.userAvatar || "👤",
-          partner2Name: profileData.partnerName || "Taylor",
-          partner2Avatar: profileData.partnerAvatar || "💖",
+          partner1Name: profileData.partner1Name || profileData.userName || "Alex",
+          partner1Avatar: profileData.partner1Avatar || profileData.userAvatar || "👤",
+          partner2Name: profileData.partner2Name || profileData.partnerName || "Taylor",
+          partner2Avatar: profileData.partner2Avatar || profileData.partnerAvatar || "💖",
           anniversaryDate: profileData.anniversaryDate || "",
           partnerBirthday: profileData.partnerBirthday || "",
           createdAt: serverTimestamp()
@@ -259,10 +259,10 @@ class HeartboundDatabase {
       try {
         const spacePayload = {
           id: newSpaceId,
-          partner1_name: profileData.userName || "Alex",
-          partner1_avatar: profileData.userAvatar || "👤",
-          partner2_name: profileData.partnerName || "Taylor",
-          partner2_avatar: profileData.partnerAvatar || "💖",
+          partner1_name: profileData.partner1Name || profileData.userName || "Alex",
+          partner1_avatar: profileData.partner1Avatar || profileData.userAvatar || "👤",
+          partner2_name: profileData.partner2Name || profileData.partnerName || "Taylor",
+          partner2_avatar: profileData.partner2Avatar || profileData.partnerAvatar || "💖",
           anniversary_date: profileData.anniversaryDate || "",
           partner_birthday: profileData.partnerBirthday || ""
         };
