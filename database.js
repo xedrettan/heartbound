@@ -385,15 +385,28 @@ class HeartboundDatabase {
   }
 
   async updateSpaceInfo(profileData) {
+    const role = localStorage.getItem("hb_user_role") || "partner1";
+    let p1Name = profileData.userName;
+    let p1Avatar = profileData.userAvatar;
+    let p2Name = profileData.partnerName;
+    let p2Avatar = profileData.partnerAvatar;
+
+    if (role === "partner2") {
+      p1Name = profileData.partnerName;
+      p1Avatar = profileData.partnerAvatar;
+      p2Name = profileData.userName;
+      p2Avatar = profileData.userAvatar;
+    }
+
     if (this.isCloudMode() && this.isPaired()) {
       const provider = this.getCloudProvider();
       if (provider === "firebase") {
         const spaceDocRef = doc(this.firestore, "spaces", this.activeSpaceId);
         await updateDoc(spaceDocRef, {
-          partner1Name: profileData.userName,
-          partner1Avatar: profileData.userAvatar,
-          partner2Name: profileData.partnerName,
-          partner2Avatar: profileData.partnerAvatar,
+          partner1Name: p1Name,
+          partner1Avatar: p1Avatar,
+          partner2Name: p2Name,
+          partner2Avatar: p2Avatar,
           anniversaryDate: profileData.anniversaryDate,
           partnerBirthday: profileData.partnerBirthday
         });
@@ -401,10 +414,10 @@ class HeartboundDatabase {
         const { error } = await this.supabaseClient
           .from("spaces")
           .update({
-            partner1_name: profileData.userName,
-            partner1_avatar: profileData.userAvatar,
-            partner2_name: profileData.partnerName,
-            partner2_avatar: profileData.partnerAvatar,
+            partner1_name: p1Name,
+            partner1_avatar: p1Avatar,
+            partner2_name: p2Name,
+            partner2_avatar: p2Avatar,
             anniversary_date: profileData.anniversaryDate,
             partner_birthday: profileData.partnerBirthday
           })
@@ -414,7 +427,15 @@ class HeartboundDatabase {
       }
     } else {
       // Local
-      localStorage.setItem("hb_sandbox_profile", JSON.stringify(profileData));
+      const localProfile = {
+        partner1Name: p1Name,
+        partner1Avatar: p1Avatar,
+        partner2Name: p2Name,
+        partner2Avatar: p2Avatar,
+        anniversaryDate: profileData.anniversaryDate,
+        partnerBirthday: profileData.partnerBirthday
+      };
+      localStorage.setItem("hb_sandbox_profile", JSON.stringify(localProfile));
       window.dispatchEvent(new Event("hb_local_profile_updated"));
     }
   }
@@ -1015,6 +1036,7 @@ class HeartboundDatabase {
       // Save configuration
       localStorage.setItem("hb_db_config", JSON.stringify(config));
       localStorage.setItem("hb_space_id", payload.s);
+      localStorage.setItem("hb_user_role", "partner2"); // Active user is the invited partner
       
       this.dbConfig = config;
       this.activeSpaceId = payload.s;

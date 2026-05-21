@@ -279,10 +279,21 @@ function initRouting() {
 function updateProfileUI() {
   if (!localSpaceData) return;
 
-  const userAvatar = localSpaceData.partner1Avatar || "👤";
-  const partnerAvatar = localSpaceData.partner2Avatar || "💖";
-  const userName = localSpaceData.partner1Name || "Alex";
-  const partnerName = localSpaceData.partner2Name || "Taylor";
+  const role = localStorage.getItem("hb_user_role") || "partner1";
+  
+  let userName, partnerName, userAvatar, partnerAvatar;
+  
+  if (role === "partner2") {
+    userAvatar = localSpaceData.partner2Avatar || "💖";
+    partnerAvatar = localSpaceData.partner1Avatar || "👤";
+    userName = localSpaceData.partner2Name || "Taylor";
+    partnerName = localSpaceData.partner1Name || "Alex";
+  } else {
+    userAvatar = localSpaceData.partner1Avatar || "👤";
+    partnerAvatar = localSpaceData.partner2Avatar || "💖";
+    userName = localSpaceData.partner1Name || "Alex";
+    partnerName = localSpaceData.partner2Name || "Taylor";
+  }
   
   // Left Nav Panel
   document.getElementById("nav-user-avatar").innerText = userAvatar;
@@ -348,8 +359,11 @@ function updateCountdownUI() {
       if (nextBday < todayZero) {
         nextBday.setFullYear(todayZero.getFullYear() + 1);
       }
+      
+      const role = localStorage.getItem("hb_user_role") || "partner1";
+      const targetPartnerName = role === "partner2" ? (localSpaceData.partner1Name || "Alex") : (localSpaceData.partner2Name || "Taylor");
       candidateEvents.push({
-        title: `${localSpaceData.partner2Name}'s Birthday 🎂`,
+        title: `${targetPartnerName}'s Birthday 🎂`,
         date: nextBday,
         displayDate: nextBday.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       });
@@ -941,6 +955,7 @@ function initSettingsAndForms() {
       if (code) {
         const success = db.bootstrapFromInviteCode(code);
         if (success) {
+          localStorage.setItem("hb_user_role", "partner2"); // Mark joining user as partner2
           // Show simplified partner welcome step
           const onboardTabs = document.getElementById("onboard-tabs");
           const formPartnerSetup = document.getElementById("form-partner-setup");
@@ -1029,10 +1044,18 @@ function initSettingsAndForms() {
 
   document.getElementById("btn-quick-settings").addEventListener("click", () => {
     if (localSpaceData) {
-      document.getElementById("settings-user-name").value = localSpaceData.partner1Name || "";
-      document.getElementById("settings-user-avatar").value = localSpaceData.partner1Avatar || "👤";
-      document.getElementById("settings-partner-name").value = localSpaceData.partner2Name || "";
-      document.getElementById("settings-partner-avatar").value = localSpaceData.partner2Avatar || "💖";
+      const role = localStorage.getItem("hb_user_role") || "partner1";
+      if (role === "partner2") {
+        document.getElementById("settings-user-name").value = localSpaceData.partner2Name || "";
+        document.getElementById("settings-user-avatar").value = localSpaceData.partner2Avatar || "💖";
+        document.getElementById("settings-partner-name").value = localSpaceData.partner1Name || "";
+        document.getElementById("settings-partner-avatar").value = localSpaceData.partner1Avatar || "👤";
+      } else {
+        document.getElementById("settings-user-name").value = localSpaceData.partner1Name || "";
+        document.getElementById("settings-user-avatar").value = localSpaceData.partner1Avatar || "👤";
+        document.getElementById("settings-partner-name").value = localSpaceData.partner2Name || "";
+        document.getElementById("settings-partner-avatar").value = localSpaceData.partner2Avatar || "💖";
+      }
       document.getElementById("settings-anniversary").value = localSpaceData.anniversaryDate || "";
       document.getElementById("settings-partner-birthday").value = localSpaceData.partnerBirthday || "";
     }
@@ -1097,6 +1120,8 @@ function initSettingsAndForms() {
   // 1. Onboarding Form Setup
   document.getElementById("form-onboarding").addEventListener("submit", async (e) => {
     e.preventDefault();
+    
+    localStorage.setItem("hb_user_role", "partner1"); // Onboarding user is the creator (partner1)
     
     const profile = {
       partner1Name: document.getElementById("onboard-user-name").value.trim(),
