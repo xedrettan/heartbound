@@ -1139,7 +1139,11 @@ class HeartboundDatabase {
       
       const jsonStr = JSON.stringify(payload);
       const base64Str = btoa(unescape(encodeURIComponent(jsonStr)));
-      return `hb_invite_${base64Str}`;
+      if (role === "partner2") {
+        return `hb_invite_partner_${base64Str}`;
+      } else {
+        return `hb_invite_creator_${base64Str}`;
+      }
     } catch (e) {
       console.error("Failed to generate invite code:", e);
       return null;
@@ -1149,7 +1153,11 @@ class HeartboundDatabase {
   bootstrapFromInviteCode(encodedString) {
     try {
       let raw = encodedString.trim();
-      if (raw.startsWith("hb_invite_")) {
+      if (raw.startsWith("hb_invite_partner_")) {
+        raw = raw.replace("hb_invite_partner_", "");
+      } else if (raw.startsWith("hb_invite_creator_")) {
+        raw = raw.replace("hb_invite_creator_", "");
+      } else if (raw.startsWith("hb_invite_")) {
         raw = raw.replace("hb_invite_", "");
       }
       // UTF-8 safe base64 decode
