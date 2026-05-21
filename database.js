@@ -613,7 +613,11 @@ class HeartboundDatabase {
           snap.forEach(doc => {
             memories.push({ id: doc.id, ...doc.data() });
           });
-          memories.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+          memories.sort((a, b) => {
+            const dA = new Date(a.date || 0).getTime();
+            const dB = new Date(b.date || 0).getTime();
+            return (isNaN(dB) ? 0 : dB) - (isNaN(dA) ? 0 : dA);
+          });
           onUpdate(memories);
         }, (err) => console.error("Firebase memories onSnapshot error:", err));
       } else if (provider === "supabase") {
@@ -784,7 +788,11 @@ class HeartboundDatabase {
               checklist: Array.isArray(data.checklist) ? data.checklist : []
             });
           });
-          events.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+          events.sort((a, b) => {
+            const dA = new Date(a.date || 0).getTime();
+            const dB = new Date(b.date || 0).getTime();
+            return (isNaN(dA) ? 0 : dA) - (isNaN(dB) ? 0 : dB);
+          });
           onUpdate(events);
         }, (err) => console.error("Firebase events onSnapshot error:", err));
       } else if (provider === "supabase") {
@@ -1000,7 +1008,11 @@ class HeartboundDatabase {
         const snap = await getDocs(collRef);
         const items = [];
         snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-        items.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+        items.sort((a, b) => {
+          const dA = new Date(a.date || 0).getTime();
+          const dB = new Date(b.date || 0).getTime();
+          return (isNaN(dB) ? 0 : dB) - (isNaN(dA) ? 0 : dA);
+        });
         this.callbacks.memories(items);
       }
     } catch (e) {
@@ -1033,7 +1045,11 @@ class HeartboundDatabase {
             checklist: Array.isArray(data.checklist) ? data.checklist : []
           });
         });
-        items.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
+        items.sort((a, b) => {
+          const dA = new Date(a.date || 0).getTime();
+          const dB = new Date(b.date || 0).getTime();
+          return (isNaN(dA) ? 0 : dA) - (isNaN(dB) ? 0 : dB);
+        });
         this.callbacks.events(items);
       }
     } catch (e) {
