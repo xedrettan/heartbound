@@ -346,26 +346,50 @@
         </p>
 
         <!-- Firestore Configuration Settings Form -->
+        <!-- Cloud Database Configuration Settings Form -->
         <form id="form-cloud-config" class="modal-form">
           <div class="form-group">
-            <label for="db-apikey">Firebase API Key</label>
-            <input type="text" id="db-apikey" placeholder="AIzaSy..." required>
+            <label for="db-provider">Database Provider</label>
+            <select id="db-provider">
+              <option value="firebase">Firebase Firestore</option>
+              <option value="supabase">Supabase (PostgreSQL)</option>
+            </select>
           </div>
-          
-          <div class="form-row-split">
+
+          <!-- Firebase Credentials Inputs -->
+          <div id="firebase-inputs">
             <div class="form-group">
-              <label for="db-projectid">Firebase Project ID</label>
-              <input type="text" id="db-projectid" placeholder="heartbound-123" required>
+              <label for="db-apikey">Firebase API Key</label>
+              <input type="text" id="db-apikey" placeholder="AIzaSy...">
+            </div>
+            
+            <div class="form-row-split">
+              <div class="form-group">
+                <label for="db-projectid">Firebase Project ID</label>
+                <input type="text" id="db-projectid" placeholder="heartbound-123">
+              </div>
+              <div class="form-group">
+                <label for="db-appid">Firebase App ID</label>
+                <input type="text" id="db-appid" placeholder="1:123456:web:abcd">
+              </div>
+            </div>
+          </div>
+
+          <!-- Supabase Credentials Inputs -->
+          <div id="supabase-inputs" class="hidden">
+            <div class="form-group">
+              <label for="db-supabase-url">Supabase URL</label>
+              <input type="text" id="db-supabase-url" placeholder="https://xxxx.supabase.co">
             </div>
             <div class="form-group">
-              <label for="db-appid">Firebase App ID</label>
-              <input type="text" id="db-appid" placeholder="1:123456:web:abcd" required>
+              <label for="db-supabase-key">Supabase Anon Key</label>
+              <input type="text" id="db-supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
             </div>
           </div>
           
           <div class="form-actions">
             <button type="button" class="btn-secondary" id="btn-clear-db-config">Reset / Disconnect</button>
-            <button type="submit" class="btn-primary">Connect Database 🔥</button>
+            <button type="submit" class="btn-primary" id="btn-connect-db">Connect Database 🔥</button>
           </div>
         </form>
 

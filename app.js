@@ -79,9 +79,11 @@ function handleConnectionStatusChange(status, spaceId) {
     inputPairCode.disabled = false;
     btnSubmitPair.disabled = false;
 
+    const providerName = db.getCloudProvider() === "supabase" ? "Supabase" : "Firebase";
+
     if (status === "cloud_connected") {
       badge.classList.add("cloud");
-      badgeText.innerText = "Cloud Connected (Not Paired)";
+      badgeText.innerText = `${providerName} Connected (Not Paired)`;
       displayCode.innerText = "Generating...";
       btnCopy.disabled = true;
       
@@ -89,11 +91,11 @@ function handleConnectionStatusChange(status, spaceId) {
       triggerAutoSpaceCreation();
     } else if (status === "paired") {
       badge.classList.add("paired");
-      badgeText.innerText = `Paired: ${spaceId}`;
+      badgeText.innerText = `${providerName} Paired: ${spaceId}`;
       displayCode.innerText = spaceId;
       btnCopy.disabled = false;
       
-      // Setup Firestore Live Listeners
+      // Setup Live Listeners
       setupRealtimeSubscriptions();
     }
   }
@@ -807,13 +809,40 @@ function initSettingsAndForms() {
   const tripModal = document.getElementById("modal-trip");
   const settingsModal = document.getElementById("modal-settings");
 
+  const toggleDbInputs = (provider) => {
+    const fbInputs = document.getElementById("firebase-inputs");
+    const sbInputs = document.getElementById("supabase-inputs");
+    if (provider === "supabase") {
+      fbInputs.classList.add("hidden");
+      sbInputs.classList.remove("hidden");
+    } else {
+      fbInputs.classList.remove("hidden");
+      sbInputs.classList.add("hidden");
+    }
+  };
+
+  document.getElementById("db-provider").addEventListener("change", (e) => {
+    toggleDbInputs(e.target.value);
+  });
+
   // Open buttons
   document.getElementById("btn-open-sync").addEventListener("click", () => {
-    // Fill Firebase credentials if already configured
     if (db.dbConfig) {
-      document.getElementById("db-apikey").value = db.dbConfig.apiKey || "";
-      document.getElementById("db-projectid").value = db.dbConfig.projectId || "";
-      document.getElementById("db-appid").value = db.dbConfig.appId || "";
+      const provider = db.dbConfig.provider || "firebase";
+      document.getElementById("db-provider").value = provider;
+      toggleDbInputs(provider);
+      
+      if (provider === "firebase") {
+        document.getElementById("db-apikey").value = db.dbConfig.apiKey || "";
+        document.getElementById("db-projectid").value = db.dbConfig.projectId || "";
+        document.getElementById("db-appid").value = db.dbConfig.appId || "";
+      } else if (provider === "supabase") {
+        document.getElementById("db-supabase-url").value = db.dbConfig.supabaseUrl || "";
+        document.getElementById("db-supabase-key").value = db.dbConfig.supabaseKey || "";
+      }
+    } else {
+      document.getElementById("db-provider").value = "firebase";
+      toggleDbInputs("firebase");
     }
     cloudModal.classList.remove("hidden");
   });
@@ -1001,11 +1030,33 @@ function initSettingsAndForms() {
   // 7. Connect Database Config Credentials
   document.getElementById("form-cloud-config").addEventListener("submit", (e) => {
     e.preventDefault();
-    const config = {
-      apiKey: document.getElementById("db-apikey").value.trim(),
-      projectId: document.getElementById("db-projectid").value.trim(),
-      appId: document.getElementById("db-appid").value.trim()
-    };
+    const provider = document.getElementById("db-provider").value;
+    let config = { provider: provider };
+    
+    if (provider === "firebase") {
+      const apiKey = document.getElementById("db-apikey").value.trim();
+      const projectId = document.getElementById("db-projectid").value.trim();
+      const appId = document.getElementById("db-appid").value.trim();
+      
+      if (!apiKey || !projectId || !appId) {
+        alert("Please fill in all Firebase credentials fields!");
+        return;
+      }
+      config.apiKey = apiKey;
+      config.projectId = projectId;
+      config.appId = appId;
+    } else if (provider === "supabase") {
+      const supabaseUrl = document.getElementById("db-supabase-url").value.trim();
+      const supabaseKey = document.getElementById("db-supabase-key").value.trim();
+      
+      if (!supabaseUrl || !supabaseKey) {
+        alert("Please fill in all Supabase URL and Anon Key fields!");
+        return;
+      }
+      config.supabaseUrl = supabaseUrl;
+      config.supabaseKey = supabaseKey;
+    }
+    
     db.saveDbConfig(config);
   });
 

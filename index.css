@@ -1782,3 +1782,9 @@ button, input, select, textarea {
   50% { transform: translateY(-6px); }
   100% { transform: translateY(0px); }
 }
+
+/* Beautiful dark-themed select option dropdown items */
+.form-group select option {
+  background-color: #1b0714;
+  color: var(--text-main);
+}
