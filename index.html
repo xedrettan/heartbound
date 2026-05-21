@@ -296,6 +296,16 @@
         <img src="assets/onboarding_hero.png" class="onboarding-hero-img" alt="Cozy starry night illustration">
       </div>
       
+      <!-- Tab Toggles for onboarding (New Space vs Join Partner) -->
+      <div class="onboard-tabs" id="onboard-tabs" style="display: flex; gap: 8px; margin-bottom: 15px; width: 100%;">
+        <button type="button" class="btn-tab active" id="btn-tab-new-space" style="flex: 1; padding: 10px; font-size: 0.9rem; border-radius: 12px; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.25); color: #fff; cursor: pointer; transition: all 0.3s ease; font-family: 'Outfit', sans-serif;">
+          <i class="fa-solid fa-plus"></i> New Space
+        </button>
+        <button type="button" class="btn-tab" id="btn-tab-join-space" style="flex: 1; padding: 10px; font-size: 0.9rem; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.6); cursor: pointer; transition: all 0.3s ease; font-family: 'Outfit', sans-serif;">
+          <i class="fa-solid fa-link"></i> Join Partner
+        </button>
+      </div>
+
       <form id="form-onboarding" class="modal-form">
         <div class="form-row-split">
           <div class="form-group">
@@ -330,6 +340,35 @@
         </div>
 
         <button type="submit" class="btn-primary btn-block">Enter Our Space ✨</button>
+      </form>
+
+      <!-- Panel: Join existing space via Sync Code -->
+      <div id="panel-join-space" class="hidden" style="width: 100%;">
+        <form id="form-join-invite" class="modal-form" style="margin-bottom: 0;">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label for="onboard-invite-code">Pasted Love Sync Code</label>
+            <textarea id="onboard-invite-code" placeholder="Pasted hb_invite_..." rows="3" required style="width: 100%; padding: 10px; border-radius: 12px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; font-family: monospace; font-size: 0.8rem; resize: none;"></textarea>
+          </div>
+          <button type="submit" class="btn-primary btn-block">Connect & Sync Space ✨</button>
+        </form>
+      </div>
+
+      <!-- Form: Simplified Partner Setup (used after decoding an invite) -->
+      <form id="form-partner-setup" class="modal-form hidden" style="width: 100%;">
+        <p class="setup-sub" style="font-size: 0.9rem; text-align: center; color: rgba(255, 255, 255, 0.8); margin-bottom: 16px;">
+          🎉 Database Connected! Enter your details to complete pairing.
+        </p>
+        <div class="form-row-split">
+          <div class="form-group">
+            <label for="partner-setup-name">Your Name</label>
+            <input type="text" id="partner-setup-name" placeholder="Taylor" required>
+          </div>
+          <div class="form-group">
+            <label for="partner-setup-avatar">Your Avatar (Emoji)</label>
+            <input type="text" id="partner-setup-avatar" value="💖" maxlength="2" required>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary btn-block">Enter Shared Space 💖</button>
       </form>
     </div>
   </div>
@@ -409,6 +448,14 @@
               <code id="display-space-code">--------</code>
               <button class="btn-secondary btn-small" id="btn-copy-code" disabled>
                 <i class="fa-solid fa-copy"></i> Copy
+              </button>
+            </div>
+            <div class="invite-links-row" style="margin-top: 12px; display: flex; gap: 8px;">
+              <button class="btn-primary btn-small" id="btn-copy-invite-link" disabled style="flex: 1; font-size: 0.85rem; padding: 6px 10px;">
+                <i class="fa-solid fa-share-nodes"></i> Copy Invite Link
+              </button>
+              <button class="btn-secondary btn-small" id="btn-copy-invite-code" disabled style="flex: 1; font-size: 0.85rem; padding: 6px 10px;">
+                <i class="fa-solid fa-key"></i> Copy Sync Code
               </button>
             </div>
           </div>

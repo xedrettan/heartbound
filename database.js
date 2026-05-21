@@ -419,6 +419,39 @@ class HeartboundDatabase {
     }
   }
 
+  async updatePartnerDetails(name, avatar) {
+    if (this.isCloudMode() && this.isPaired()) {
+      const provider = this.getCloudProvider();
+      if (provider === "firebase") {
+        const spaceDocRef = doc(this.firestore, "spaces", this.activeSpaceId);
+        await updateDoc(spaceDocRef, {
+          partner2Name: name,
+          partner2Avatar: avatar
+        });
+      } else if (provider === "supabase") {
+        const { error } = await this.supabaseClient
+          .from("spaces")
+          .update({
+            partner2_name: name,
+            partner2_avatar: avatar
+          })
+          .eq("id", this.activeSpaceId);
+        if (error) throw error;
+        this.refreshSpaceInfo();
+      }
+    } else {
+      // Local
+      const data = localStorage.getItem("hb_sandbox_profile");
+      if (data) {
+        const profile = JSON.parse(data);
+        profile.partner2Name = name;
+        profile.partner2Avatar = avatar;
+        localStorage.setItem("hb_sandbox_profile", JSON.stringify(profile));
+        window.dispatchEvent(new Event("hb_local_profile_updated"));
+      }
+    }
+  }
+
   // 2. Loves & Hates
   subscribeLovesHates(onUpdate) {
     this.callbacks.lovesHates = onUpdate;
@@ -920,6 +953,78 @@ class HeartboundDatabase {
           this.callbacks.events(data.map(mapCelebrationRow));
         }
       }
+    }
+  }
+
+  generateInviteCode() {
+    if (!this.isCloudMode() || !this.isPaired()) return null;
+    try {
+      const provider = this.getCloudProvider();
+      let payload = {
+        p: provider,
+        s: this.activeSpaceId
+      };
+      
+      if (provider === "supabase") {
+        payload.u = this.dbConfig.supabaseUrl;
+        payload.k = this.dbConfig.supabaseKey;
+      } else if (provider === "firebase") {
+        payload.a = this.dbConfig.apiKey;
+        payload.d = this.dbConfig.projectId;
+        payload.i = this.dbConfig.appId;
+      }
+      
+      const jsonStr = JSON.stringify(payload);
+      const base64Str = btoa(unescape(encodeURIComponent(jsonStr)));
+      return `hb_invite_${base64Str}`;
+    } catch (e) {
+      console.error("Failed to generate invite code:", e);
+      return null;
+    }
+  }
+
+  bootstrapFromInviteCode(encodedString) {
+    try {
+      let raw = encodedString.trim();
+      if (raw.startsWith("hb_invite_")) {
+        raw = raw.replace("hb_invite_", "");
+      }
+      // UTF-8 safe base64 decode
+      const jsonStr = decodeURIComponent(escape(atob(raw)));
+      const payload = JSON.parse(jsonStr);
+      
+      if (!payload.p || !payload.s) {
+        throw new Error("Invalid invite payload structure");
+      }
+      
+      let config = { provider: payload.p };
+      
+      if (payload.p === "supabase") {
+        if (!payload.u || !payload.k) throw new Error("Missing Supabase credentials in invite payload");
+        config.supabaseUrl = payload.u;
+        config.supabaseKey = payload.k;
+      } else if (payload.p === "firebase") {
+        if (!payload.a || !payload.d || !payload.i) throw new Error("Missing Firebase credentials in invite payload");
+        config.apiKey = payload.a;
+        config.projectId = payload.d;
+        config.appId = payload.i;
+      } else {
+        throw new Error("Unknown database provider in invite payload: " + payload.p);
+      }
+      
+      // Save configuration
+      localStorage.setItem("hb_db_config", JSON.stringify(config));
+      localStorage.setItem("hb_space_id", payload.s);
+      
+      this.dbConfig = config;
+      this.activeSpaceId = payload.s;
+      
+      // Initialize connection and trigger UI callback
+      this.initConnection();
+      return true;
+    } catch (e) {
+      console.error("Failed to bootstrap from invite code:", e);
+      return false;
     }
   }
 }

@@ -61,6 +61,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   initPresetCovers();
   initSettingsAndForms();
   
+  // Parse invite URL search parameters if any
+  checkForInviteLink();
+  
   // Connect database logic
   db.initConnection(handleConnectionStatusChange);
 });
@@ -80,6 +83,9 @@ function handleConnectionStatusChange(status, spaceId) {
   const btnCopy = document.getElementById("btn-copy-code");
   const inputPairCode = document.getElementById("input-pair-code");
   const btnSubmitPair = document.getElementById("btn-submit-pair");
+  
+  const btnCopyInviteLink = document.getElementById("btn-copy-invite-link");
+  const btnCopyInviteCode = document.getElementById("btn-copy-invite-code");
 
   if (status === "sandbox") {
     badge.classList.add("sandbox");
@@ -89,6 +95,8 @@ function handleConnectionStatusChange(status, spaceId) {
     btnCopy.disabled = true;
     inputPairCode.disabled = true;
     btnSubmitPair.disabled = true;
+    if (btnCopyInviteLink) btnCopyInviteLink.disabled = true;
+    if (btnCopyInviteCode) btnCopyInviteCode.disabled = true;
     
     // Check if sandbox onboarding exists
     checkOnboarding(false);
@@ -105,6 +113,8 @@ function handleConnectionStatusChange(status, spaceId) {
       badgeText.innerText = `${providerName} Connected (Not Paired)`;
       displayCode.innerText = "Generating...";
       btnCopy.disabled = true;
+      if (btnCopyInviteLink) btnCopyInviteLink.disabled = true;
+      if (btnCopyInviteCode) btnCopyInviteCode.disabled = true;
       
       // Auto-create space document if none exists
       triggerAutoSpaceCreation();
@@ -113,6 +123,8 @@ function handleConnectionStatusChange(status, spaceId) {
       badgeText.innerText = `${providerName} Paired: ${spaceId}`;
       displayCode.innerText = spaceId;
       btnCopy.disabled = false;
+      if (btnCopyInviteLink) btnCopyInviteLink.disabled = false;
+      if (btnCopyInviteCode) btnCopyInviteCode.disabled = false;
       
       // Setup Live Listeners
       setupRealtimeSubscriptions();
@@ -135,6 +147,40 @@ async function triggerAutoSpaceCreation() {
   } else {
     // Show onboarding for cloud mode before creating
     checkOnboarding(true);
+  }
+}
+
+function checkForInviteLink() {
+  const params = new URLSearchParams(window.location.search);
+  const inviteCode = params.get("invite");
+  if (inviteCode) {
+    console.log("Found invite parameter in URL. Bootstrapping...");
+    const success = db.bootstrapFromInviteCode(inviteCode);
+    if (success) {
+      // Clean query parameters from URL bar
+      const newUrl = window.location.origin + window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      
+      // Force show simplified onboarding
+      setTimeout(() => {
+        const onboardingModal = document.getElementById("modal-onboarding");
+        if (onboardingModal) {
+          onboardingModal.classList.remove("hidden");
+          // Switch view to simplified partner setup
+          const onboardTabs = document.getElementById("onboard-tabs");
+          const formOnboarding = document.getElementById("form-onboarding");
+          const panelJoinSpace = document.getElementById("panel-join-space");
+          const formPartnerSetup = document.getElementById("form-partner-setup");
+          
+          if (onboardTabs) onboardTabs.classList.add("hidden");
+          if (formOnboarding) formOnboarding.classList.add("hidden");
+          if (panelJoinSpace) panelJoinSpace.classList.add("hidden");
+          if (formPartnerSetup) formPartnerSetup.classList.remove("hidden");
+        }
+      }, 500);
+    } else {
+      alert("Invalid or expired Love Sync invite link.");
+    }
   }
 }
 
@@ -848,6 +894,94 @@ function initSettingsAndForms() {
   const tripModal = document.getElementById("modal-trip");
   const settingsModal = document.getElementById("modal-settings");
 
+  // Onboarding Tab Switches (New Space vs Join Partner)
+  const btnTabNewSpace = document.getElementById("btn-tab-new-space");
+  const btnTabJoinSpace = document.getElementById("btn-tab-join-space");
+  const formOnboarding = document.getElementById("form-onboarding");
+  const panelJoinSpace = document.getElementById("panel-join-space");
+
+  if (btnTabNewSpace && btnTabJoinSpace) {
+    btnTabNewSpace.addEventListener("click", () => {
+      btnTabNewSpace.classList.add("active");
+      btnTabNewSpace.style.background = "rgba(255, 255, 255, 0.15)";
+      btnTabNewSpace.style.borderColor = "rgba(255, 255, 255, 0.25)";
+      btnTabNewSpace.style.color = "#fff";
+      
+      btnTabJoinSpace.classList.remove("active");
+      btnTabJoinSpace.style.background = "rgba(255, 255, 255, 0.05)";
+      btnTabJoinSpace.style.borderColor = "rgba(255, 255, 255, 0.1)";
+      btnTabJoinSpace.style.color = "rgba(255, 255, 255, 0.6)";
+
+      formOnboarding.classList.remove("hidden");
+      panelJoinSpace.classList.add("hidden");
+    });
+
+    btnTabJoinSpace.addEventListener("click", () => {
+      btnTabJoinSpace.classList.add("active");
+      btnTabJoinSpace.style.background = "rgba(255, 255, 255, 0.15)";
+      btnTabJoinSpace.style.borderColor = "rgba(255, 255, 255, 0.25)";
+      btnTabJoinSpace.style.color = "#fff";
+      
+      btnTabNewSpace.classList.remove("active");
+      btnTabNewSpace.style.background = "rgba(255, 255, 255, 0.05)";
+      btnTabNewSpace.style.borderColor = "rgba(255, 255, 255, 0.1)";
+      btnTabNewSpace.style.color = "rgba(255, 255, 255, 0.6)";
+
+      formOnboarding.classList.add("hidden");
+      panelJoinSpace.classList.remove("hidden");
+    });
+  }
+
+  // Paste Love Sync Code Form Submit
+  const formJoinInvite = document.getElementById("form-join-invite");
+  if (formJoinInvite) {
+    formJoinInvite.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const code = document.getElementById("onboard-invite-code").value.trim();
+      if (code) {
+        const success = db.bootstrapFromInviteCode(code);
+        if (success) {
+          // Show simplified partner welcome step
+          const onboardTabs = document.getElementById("onboard-tabs");
+          const formPartnerSetup = document.getElementById("form-partner-setup");
+          if (onboardTabs) onboardTabs.classList.add("hidden");
+          formOnboarding.classList.add("hidden");
+          panelJoinSpace.classList.add("hidden");
+          if (formPartnerSetup) formPartnerSetup.classList.remove("hidden");
+        } else {
+          alert("Failed to connect using that Invite Code. Please verify the code string!");
+        }
+      }
+    });
+  }
+
+  // Simplified Partner welcome details submit
+  const formPartnerSetup = document.getElementById("form-partner-setup");
+  if (formPartnerSetup) {
+    formPartnerSetup.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("partner-setup-name").value.trim();
+      const avatar = document.getElementById("partner-setup-avatar").value.trim();
+      
+      if (name && avatar) {
+        try {
+          await db.updatePartnerDetails(name, avatar);
+          
+          // Hide onboarding modal
+          onboardingModal.classList.add("hidden");
+          
+          // Setup real-time subscriptions
+          setupRealtimeSubscriptions();
+        } catch (err) {
+          console.error("Partner details update failure:", err);
+          alert("Could not update space details. Logging you in anyway...");
+          onboardingModal.classList.add("hidden");
+          setupRealtimeSubscriptions();
+        }
+      }
+    });
+  }
+
   const toggleDbInputs = (provider) => {
     const fbInputs = document.getElementById("firebase-inputs");
     const sbInputs = document.getElementById("supabase-inputs");
@@ -1126,6 +1260,39 @@ function initSettingsAndForms() {
       }, 2000);
     });
   });
+
+  // Copy invite share link
+  const btnCopyInviteLink = document.getElementById("btn-copy-invite-link");
+  if (btnCopyInviteLink) {
+    btnCopyInviteLink.addEventListener("click", () => {
+      const token = db.generateInviteCode();
+      if (token) {
+        const shareLink = window.location.origin + window.location.pathname + "?invite=" + token;
+        navigator.clipboard.writeText(shareLink).then(() => {
+          btnCopyInviteLink.innerHTML = `<i class="fa-solid fa-circle-check"></i> Link Copied!`;
+          setTimeout(() => {
+            btnCopyInviteLink.innerHTML = `<i class="fa-solid fa-share-nodes"></i> Copy Invite Link`;
+          }, 2000);
+        });
+      }
+    });
+  }
+
+  // Copy raw invite code
+  const btnCopyInviteCode = document.getElementById("btn-copy-invite-code");
+  if (btnCopyInviteCode) {
+    btnCopyInviteCode.addEventListener("click", () => {
+      const token = db.generateInviteCode();
+      if (token) {
+        navigator.clipboard.writeText(token).then(() => {
+          btnCopyInviteCode.innerHTML = `<i class="fa-solid fa-circle-check"></i> Code Copied!`;
+          setTimeout(() => {
+            btnCopyInviteCode.innerHTML = `<i class="fa-solid fa-key"></i> Copy Sync Code`;
+          }, 2000);
+        });
+      }
+    });
+  }
 
   // Pair existing Space ID code
   document.getElementById("form-pair-space").addEventListener("submit", async (e) => {
