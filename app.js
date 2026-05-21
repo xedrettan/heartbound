@@ -1186,18 +1186,17 @@ function initSettingsAndForms() {
   if (btnLogout) {
     btnLogout.addEventListener("click", () => {
       if (confirm("Are you sure you want to log out from this space? You will need your Sync Code to rejoin.")) {
-        db.clearDbConfig();
+        // Stop all real-time listeners first
+        db.unsubscribeAll();
+        
+        // Wipe local storage thoroughly
+        localStorage.removeItem("hb_db_config");
+        localStorage.removeItem("hb_space_id");
         localStorage.removeItem("hb_sandbox_profile");
         localStorage.removeItem("hb_user_role");
         
-        // Immediately update UI while page reloads
-        const settingsModal = document.getElementById("modal-settings");
-        if (settingsModal) settingsModal.classList.add("hidden");
-        const onboardingModal = document.getElementById("modal-onboarding");
-        if (onboardingModal) onboardingModal.classList.remove("hidden");
-        
-        // Force hard reload to completely clear memory state
-        window.location.reload(true);
+        // Redirect to a guaranteed clean URL to prevent any cache/state issues
+        window.location.href = window.location.pathname + "?t=" + new Date().getTime();
       }
     });
   }
