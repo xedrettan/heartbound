@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heartbound — Your Shared Memory & Love Ledger</title>
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+
+  <!-- Floating Hearts Background Container -->
+  <div class="heart-particles" id="heart-particles"></div>
+
+  <!-- App Wrapper -->
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <i class="fa-solid fa-heart-pulse logo-icon"></i>
+        <h1>Heartbound</h1>
+      </div>
+      
+      <div class="partner-mini-profile" id="partner-mini-profile">
+        <div class="avatar-pair">
+          <div class="avatar user-avatar" id="nav-user-avatar">👤</div>
+          <div class="avatar-heart"><i class="fa-solid fa-heart"></i></div>
+          <div class="avatar partner-avatar" id="nav-partner-avatar">💖</div>
+        </div>
+        <div class="couple-names" id="nav-couple-names">Alex & Taylor</div>
+        <div class="days-together-badge" id="nav-days-badge">0 Days Together</div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#dashboard" class="nav-item active" data-view="dashboard">
+          <i class="fa-solid fa-compass"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="#preferences" class="nav-item" data-view="preferences">
+          <i class="fa-solid fa-tags"></i>
+          <span>The Little Things</span>
+        </a>
+        <a href="#timeline" class="nav-item" data-view="timeline">
+          <i class="fa-solid fa-timeline"></i>
+          <span>Memory Lane</span>
+        </a>
+        <a href="#adventures" class="nav-item" data-view="adventures">
+          <i class="fa-solid fa-plane-departure"></i>
+          <span>Adventures</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="btn-open-sync" class="btn-sync-settings">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+          <span>Cloud Sync Settings</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Shell -->
+    <main class="main-content">
+      
+      <!-- Top Action Bar -->
+      <header class="top-bar">
+        <div class="current-view-title">
+          <h2 id="view-title">Dashboard</h2>
+        </div>
+        <div class="connection-status-container">
+          <div class="connection-badge sandbox" id="connection-badge">
+            <span class="status-dot"></span>
+            <span class="status-text" id="connection-status-text">Local Sandbox</span>
+          </div>
+          <button class="settings-icon-btn" id="btn-quick-settings" title="Quick Settings">
+            <i class="fa-solid fa-gear"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- VIEW: Dashboard -->
+      <section id="view-dashboard" class="app-view active">
+        <!-- Dashboard Welcome Hero -->
+        <div class="dashboard-hero">
+          <div class="hero-content">
+            <h3 class="hero-greeting" id="hero-greeting">Hello, Alex</h3>
+            <p class="hero-sub">Here is your shared love ledger and memorable space with <span id="hero-partner-name">Taylor</span>.</p>
+          </div>
+          <div class="hero-milestone">
+            <div class="anniversary-gasp">
+              <span class="milestone-label">OUR LOVE COUNT</span>
+              <div class="milestone-counter" id="dash-days-together">0</div>
+              <span class="milestone-sub">beautiful days together</span>
+            </div>
+            <i class="fa-solid fa-heart hero-pulse-heart"></i>
+          </div>
+        </div>
+
+        <!-- Dashboard Summary Grid -->
+        <div class="dashboard-grid">
+          
+          <!-- Next Countdown Widget -->
+          <div class="glass-card widget-card countdown-widget">
+            <div class="card-header">
+              <h4>Next Celebration</h4>
+              <i class="fa-solid fa-calendar-check icon-rose"></i>
+            </div>
+            <div class="widget-content">
+              <div class="countdown-circle">
+                <div class="countdown-days" id="countdown-days">00</div>
+                <div class="countdown-label">Days Left</div>
+              </div>
+              <div class="countdown-details">
+                <h5 id="countdown-event-title">Taylor's Birthday</h5>
+                <p id="countdown-event-date">June 21, 2026</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Thoughtful Gesture Spark Widget -->
+          <div class="glass-card widget-card prompt-widget">
+            <div class="card-header">
+              <h4>Thoughtful Spark</h4>
+              <i class="fa-solid fa-wand-magic-sparkles icon-gold"></i>
+            </div>
+            <div class="widget-content spark-box">
+              <p class="spark-text" id="spark-text">Loading a romantic nudge based on what they love...</p>
+              <button class="btn-secondary btn-small" id="btn-next-spark">
+                <i class="fa-solid fa-rotate"></i> Another Idea
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Statistics Summary -->
+          <div class="glass-card widget-card stats-widget">
+            <div class="card-header">
+              <h4>Space Overview</h4>
+              <i class="fa-solid fa-chart-simple icon-violet"></i>
+            </div>
+            <div class="widget-content stats-flex">
+              <div class="stat-item">
+                <span class="stat-num" id="stat-loves">0</span>
+                <span class="stat-lbl">Loves</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" id="stat-hates">0</span>
+                <span class="stat-lbl">Hates</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" id="stat-memories">0</span>
+                <span class="stat-lbl">Memories</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" id="stat-adventures">0</span>
+                <span class="stat-lbl">Adventures</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- VIEW: Loves & Hates (The Little Things) -->
+      <section id="view-preferences" class="app-view">
+        <div class="preferences-control-bar">
+          <div class="pref-type-tabs">
+            <button class="pref-tab-btn active" id="tab-loves" data-type="love">
+              <i class="fa-solid fa-heart text-rose"></i> What They Love
+            </button>
+            <button class="pref-tab-btn" id="tab-hates" data-type="hate">
+              <i class="fa-solid fa-circle-xmark text-violet"></i> What They Hate
+            </button>
+          </div>
+          <button class="btn-primary" id="btn-add-preference">
+            <i class="fa-solid fa-plus"></i> Add Item
+          </button>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filters-container glass-card">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="pref-search" placeholder="Search preference...">
+          </div>
+          <div class="category-filters" id="category-filters-container">
+            <button class="filter-badge active" data-category="all">All Categories</button>
+            <button class="filter-badge" data-category="Food"><i class="fa-solid fa-utensils"></i> Food</button>
+            <button class="filter-badge" data-category="Gifts"><i class="fa-solid fa-gift"></i> Gifts</button>
+            <button class="filter-badge" data-category="Travel"><i class="fa-solid fa-mountain"></i> Travel</button>
+            <button class="filter-badge" data-category="Habits"><i class="fa-solid fa-brain"></i> Habits</button>
+            <button class="filter-badge" data-category="Allergies"><i class="fa-solid fa-shield-virus"></i> Allergies</button>
+            <button class="filter-badge" data-category="Other"><i class="fa-solid fa-ellipsis"></i> Other</button>
+          </div>
+        </div>
+
+        <!-- Preferences Grid -->
+        <div class="preferences-grid" id="preferences-grid">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state hidden" id="pref-empty-state">
+          <i class="fa-solid fa-bookmark empty-icon"></i>
+          <h4>No items found</h4>
+          <p>Click "Add Item" above to capture a sweet preference or a detail to remember.</p>
+        </div>
+      </section>
+
+      <!-- VIEW: Memory Lane -->
+      <section id="view-timeline" class="app-view">
+        <div class="timeline-controls">
+          <p class="timeline-intro">A beautiful chronological visual journal of your special moments together.</p>
+          <button class="btn-primary" id="btn-add-memory">
+            <i class="fa-solid fa-camera"></i> Record a Memory
+          </button>
+        </div>
+
+        <!-- Timeline Visual Track -->
+        <div class="timeline-wrapper">
+          <div class="timeline-line"></div>
+          <div class="timeline-container" id="timeline-container">
+            <!-- Dynamically populated memory cards -->
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state hidden" id="timeline-empty-state">
+          <i class="fa-solid fa-camera-retro empty-icon"></i>
+          <h4>Memory Lane is empty</h4>
+          <p>Record your first special moment together to see it displayed on this visual timeline.</p>
+        </div>
+      </section>
+
+      <!-- VIEW: Adventures (Trips & Celebrations) -->
+      <section id="view-adventures" class="app-view">
+        <div class="adventures-split">
+          
+          <!-- Column 1: Celebrations & Milestones -->
+          <div class="adventures-column glass-card">
+            <div class="column-header">
+              <h3><i class="fa-solid fa-cake-candles icon-rose"></i> Celebrations & Milestones</h3>
+              <button class="btn-circle-add" id="btn-add-celebration" title="Add Celebration">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+            <div class="adventures-list" id="celebrations-list">
+              <!-- Dynamically populated celebrations -->
+            </div>
+            <div class="empty-column-state hidden" id="celebrations-empty">
+              <p>No upcoming celebrations yet. Plan their birthday or an anniversary milestone!</p>
+            </div>
+          </div>
+
+          <!-- Column 2: Adventures & Trips -->
+          <div class="adventures-column glass-card">
+            <div class="column-header">
+              <h3><i class="fa-solid fa-earth-americas icon-teal"></i> Adventures & Trips</h3>
+              <button class="btn-circle-add" id="btn-add-trip" title="Plan a Trip">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+            </div>
+            <div class="adventures-list" id="trips-list">
+              <!-- Dynamically populated trips -->
+            </div>
+            <div class="empty-column-state hidden" id="trips-empty">
+              <p>No trips planned yet. Time to map out an out-of-the-country trip or weekend getaway!</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- MODAL: Onboarding / Profile Setup -->
+  <div class="modal-overlay hidden" id="modal-onboarding">
+    <div class="glass-modal onboarding-modal">
+      <div class="modal-logo">
+        <i class="fa-solid fa-heart-pulse modal-logo-icon"></i>
+        <h2>Welcome to Heartbound</h2>
+        <p>Let's personalize your shared space before we begin.</p>
+        <img src="assets/onboarding_hero.png" class="onboarding-hero-img" alt="Cozy starry night illustration">
+      </div>
+      
+      <form id="form-onboarding" class="modal-form">
+        <div class="form-row-split">
+          <div class="form-group">
+            <label for="onboard-user-name">Your Name</label>
+            <input type="text" id="onboard-user-name" placeholder="Alex" required>
+          </div>
+          <div class="form-group">
+            <label for="onboard-user-avatar">Your Avatar (Emoji)</label>
+            <input type="text" id="onboard-user-avatar" value="👤" maxlength="2" required>
+          </div>
+        </div>
+
+        <div class="form-row-split">
+          <div class="form-group">
+            <label for="onboard-partner-name">Significant Other's Name</label>
+            <input type="text" id="onboard-partner-name" placeholder="Taylor" required>
+          </div>
+          <div class="form-group">
+            <label for="onboard-partner-avatar">Their Avatar (Emoji)</label>
+            <input type="text" id="onboard-partner-avatar" value="💖" maxlength="2" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="onboard-anniversary">Your Anniversary Date (When your journey began)</label>
+          <input type="date" id="onboard-anniversary" required>
+        </div>
+
+        <div class="form-group">
+          <label for="onboard-partner-birthday">Their Birthday</label>
+          <input type="date" id="onboard-partner-birthday" required>
+        </div>
+
+        <button type="submit" class="btn-primary btn-block">Enter Our Space ✨</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Cloud Sync Settings -->
+  <div class="modal-overlay hidden" id="modal-cloud-sync">
+    <div class="glass-modal cloud-sync-modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-cloud-arrow-up icon-rose"></i> Cloud Sync Database Setup</h3>
+        <button class="btn-modal-close" id="btn-close-sync"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      
+      <div class="modal-body">
+        <p class="sync-desc">
+          Heartbound lets you host your database on <strong>Firebase Firestore</strong> for free. 
+          By pasting your Firebase credentials below, you can activate the shared mode and link devices with your significant other!
+        </p>
+
+        <!-- Firestore Configuration Settings Form -->
+        <form id="form-cloud-config" class="modal-form">
+          <div class="form-group">
+            <label for="db-apikey">Firebase API Key</label>
+            <input type="text" id="db-apikey" placeholder="AIzaSy..." required>
+          </div>
+          
+          <div class="form-row-split">
+            <div class="form-group">
+              <label for="db-projectid">Firebase Project ID</label>
+              <input type="text" id="db-projectid" placeholder="heartbound-123" required>
+            </div>
+            <div class="form-group">
+              <label for="db-appid">Firebase App ID</label>
+              <input type="text" id="db-appid" placeholder="1:123456:web:abcd" required>
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" class="btn-secondary" id="btn-clear-db-config">Reset / Disconnect</button>
+            <button type="submit" class="btn-primary">Connect Database 🔥</button>
+          </div>
+        </form>
+
+        <hr class="modal-divider">
+
+        <!-- Couple Pairing Space Panel -->
+        <div class="pairing-panel disabled" id="pairing-panel">
+          <h4>Couple Space Connection</h4>
+          <p class="pairing-sub">Once your database is connected, pair your spaces to sync in real-time!</p>
+          
+          <div class="space-code-generator">
+            <span class="code-label">Your Space Code:</span>
+            <div class="code-display-row">
+              <code id="display-space-code">--------</code>
+              <button class="btn-secondary btn-small" id="btn-copy-code" disabled>
+                <i class="fa-solid fa-copy"></i> Copy
+              </button>
+            </div>
+          </div>
+
+          <form id="form-pair-space" class="modal-form">
+            <div class="form-group">
+              <label for="input-pair-code">Enter Partner's Space Code</label>
+              <div class="input-action-row">
+                <input type="text" id="input-pair-code" placeholder="love-xxxx-xxxx" disabled required>
+                <button type="submit" class="btn-primary" id="btn-submit-pair" disabled>Connect & Pair</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Add/Edit Preference (Love or Hate) -->
+  <div class="modal-overlay hidden" id="modal-preference">
+    <div class="glass-modal form-modal">
+      <div class="modal-header">
+        <h3 id="pref-modal-title">Add Love/Hate Note</h3>
+        <button class="btn-modal-close" data-close="preference"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-preference" class="modal-form">
+        <input type="hidden" id="pref-id">
+        
+        <div class="form-group">
+          <label>Type</label>
+          <div class="segmented-control">
+            <label class="segment-option">
+              <input type="radio" name="pref-type" value="love" checked>
+              <span class="segment-label text-rose"><i class="fa-solid fa-heart"></i> They Love</span>
+            </label>
+            <label class="segment-option">
+              <input type="radio" name="pref-type" value="hate">
+              <span class="segment-label text-violet"><i class="fa-solid fa-circle-xmark"></i> They Hate</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="pref-item">What is it?</label>
+          <input type="text" id="pref-item" placeholder="e.g. Lindt Dark Chocolate, Cilantro, Waking up early" required>
+        </div>
+
+        <div class="form-group">
+          <label for="pref-category">Category</label>
+          <select id="pref-category" required>
+            <option value="Food">Food & Dining</option>
+            <option value="Gifts">Gifts & Flowers</option>
+            <option value="Travel">Travel & Places</option>
+            <option value="Habits">Habits & Daily Routine</option>
+            <option value="Allergies">Allergies & Pet Peeves</option>
+            <option value="Other">Other Details</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="pref-notes">Description / Details</label>
+          <textarea id="pref-notes" placeholder="e.g. Prefers 70%+ dark cocoa. Hates milk chocolate because it is too sweet." rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary btn-block">Save Note 💖</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Add Memory -->
+  <div class="modal-overlay hidden" id="modal-memory">
+    <div class="glass-modal form-modal">
+      <div class="modal-header">
+        <h3>Record a Shared Memory</h3>
+        <button class="btn-modal-close" data-close="memory"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-memory" class="modal-form">
+        <div class="form-group">
+          <label for="memory-title">Memory Title</label>
+          <input type="text" id="memory-title" placeholder="e.g., Weekend at the beach, Our first anniversary" required>
+        </div>
+
+        <div class="form-row-split">
+          <div class="form-group">
+            <label for="memory-date">When did it happen?</label>
+            <input type="date" id="memory-date" required>
+          </div>
+          <div class="form-group">
+            <label for="memory-feeling">A feeling or mood (Emoji)</label>
+            <input type="text" id="memory-feeling" value="🥰" maxlength="2" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="memory-description">Tell the story...</label>
+          <textarea id="memory-description" placeholder="Write down some details that you both loved..." rows="4" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Choose a Preset Visual Theme</label>
+          <div class="cover-presets-grid" id="cover-presets">
+            <!-- Preset items loaded by JS -->
+          </div>
+          <div class="custom-url-group">
+            <label for="memory-cover-url">Or paste a custom image URL</label>
+            <input type="url" id="memory-cover-url" placeholder="https://images.unsplash.com/...">
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary btn-block">Pin to Memory Lane ✨</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Add Event/Celebration -->
+  <div class="modal-overlay hidden" id="modal-celebration">
+    <div class="glass-modal form-modal">
+      <div class="modal-header">
+        <h3>Add Upcoming Celebration</h3>
+        <button class="btn-modal-close" data-close="celebration"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-celebration" class="modal-form">
+        <div class="form-group">
+          <label for="cel-title">Celebration Title</label>
+          <input type="text" id="cel-title" placeholder="e.g., alex's 25th birthday, 2 year anniversary" required>
+        </div>
+
+        <div class="form-group">
+          <label for="cel-date">Date of Celebration</label>
+          <input type="date" id="cel-date" required>
+        </div>
+
+        <div class="form-group">
+          <label for="cel-notes">Planning Details / Gift Ideas</label>
+          <textarea id="cel-notes" placeholder="e.g., Book dinner at that French restaurant they loved. Buy them that bag they tagged on Instagram." rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary btn-block">Add to Calendar 🎂</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Add Trip -->
+  <div class="modal-overlay hidden" id="modal-trip">
+    <div class="glass-modal form-modal">
+      <div class="modal-header">
+        <h3>Plan a Trip / Adventure</h3>
+        <button class="btn-modal-close" data-close="trip"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-trip" class="modal-form">
+        <div class="form-group">
+          <label for="trip-title">Where are we going?</label>
+          <input type="text" id="trip-title" placeholder="e.g., Summer Trip to Tokyo, Weekend in cabin" required>
+        </div>
+
+        <div class="form-group">
+          <label for="trip-date">Departure Date</label>
+          <input type="date" id="trip-date" required>
+        </div>
+
+        <div class="form-group">
+          <label for="trip-notes">Itinerary Details / Accommodations</label>
+          <textarea id="trip-notes" placeholder="e.g., Flight departure at 10 AM. Staying at the Shinjuku hotel. Things to eat: Ramen, Sushi, Okonomiyaki." rows="3"></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary btn-block">Let's Adventure! ✈️</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Quick Settings -->
+  <div class="modal-overlay hidden" id="modal-settings">
+    <div class="glass-modal form-modal">
+      <div class="modal-header">
+        <h3>Relationship Settings</h3>
+        <button class="btn-modal-close" id="btn-close-settings"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-settings" class="modal-form">
+        <div class="form-row-split">
+          <div class="form-group">
+            <label for="settings-user-name">Your Name</label>
+            <input type="text" id="settings-user-name" required>
+          </div>
+          <div class="form-group">
+            <label for="settings-user-avatar">Your Avatar (Emoji)</label>
+            <input type="text" id="settings-user-avatar" maxlength="2" required>
+          </div>
+        </div>
+
+        <div class="form-row-split">
+          <div class="form-group">
+            <label for="settings-partner-name">Their Name</label>
+            <input type="text" id="settings-partner-name" required>
+          </div>
+          <div class="form-group">
+            <label for="settings-partner-avatar">Their Avatar (Emoji)</label>
+            <input type="text" id="settings-partner-avatar" maxlength="2" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="settings-anniversary">Anniversary Date</label>
+          <input type="date" id="settings-anniversary" required>
+        </div>
+
+        <div class="form-group">
+          <label for="settings-partner-birthday">Their Birthday</label>
+          <input type="date" id="settings-partner-birthday" required>
+        </div>
+
+        <button type="submit" class="btn-primary btn-block">Update Settings ⚙️</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Core App Libraries -->
+  <!-- We load Firebase JS SDK modularly or globally via web scripts. 
+       Using the CDN modules below ensures we have everything needed. -->
+  <script src="database.js" type="module"></script>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
