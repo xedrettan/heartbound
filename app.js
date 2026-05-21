@@ -724,7 +724,8 @@ function renderEvents() {
   cList.innerHTML = "";
   tList.innerHTML = "";
 
-  const celebrations = localEvents.filter(e => e.type === "birthday");
+  // Catch all non-trip events as celebrations in case of legacy or malformed 'type' fields in the database
+  const celebrations = localEvents.filter(e => e.type !== "trip");
   const trips = localEvents.filter(e => e.type === "trip");
 
   // Toggle empty states
@@ -739,10 +740,14 @@ function renderEvents() {
     const card = document.createElement("div");
     card.className = "adventure-card celebration-card";
     
-    const celDate = parseLocalDate(cel.date);
+    const rawDate = cel.date || cel.Date || "";
+    const celDate = parseLocalDate(rawDate);
     const formattedDate = !isNaN(celDate.getTime())
       ? celDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : "Unknown Date";
+
+    const displayTitle = cel.title || cel.Title || cel.name || cel.Name || "Unnamed Celebration";
+    const displayNotes = cel.notes || cel.Notes || cel.description || cel.Description || "No description notes.";
 
     const isGiftChecklist = cel.checklist && cel.checklist.length > 0;
     const progress = calculateChecklistProgress(cel.checklist);
@@ -750,14 +755,14 @@ function renderEvents() {
     card.innerHTML = `
       <div class="adventure-card-header">
         <div class="adv-title-box">
-          <h4>${cel.title}</h4>
+          <h4>${displayTitle}</h4>
           <p><i class="fa-solid fa-cake-candles"></i> ${formattedDate}</p>
         </div>
         <div class="adv-action-row">
           <button class="adv-delete-btn" data-id="${cel.id}"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
-      <p class="adv-desc">${cel.notes || 'No description notes.'}</p>
+      <p class="adv-desc">${displayNotes}</p>
       <div class="checklist-wrapper">
         <div class="checklist-title">
           <span>Preparation / Gifts List</span>
@@ -805,24 +810,28 @@ function renderEvents() {
     const card = document.createElement("div");
     card.className = "adventure-card trip-card";
     
-    const tripDate = parseLocalDate(trip.date);
+    const rawDate = trip.date || trip.Date || "";
+    const tripDate = parseLocalDate(rawDate);
     const formattedDate = !isNaN(tripDate.getTime())
       ? tripDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : "Unknown Date";
+
+    const displayTitle = trip.title || trip.Title || trip.name || trip.Name || "Unnamed Trip";
+    const displayNotes = trip.notes || trip.Notes || trip.description || trip.Description || "No trip descriptions.";
 
     const progress = calculateChecklistProgress(trip.checklist);
 
     card.innerHTML = `
       <div class="adventure-card-header">
         <div class="adv-title-box">
-          <h4>Trip to ${trip.title}</h4>
+          <h4>Trip to ${displayTitle}</h4>
           <p><i class="fa-solid fa-compass"></i> Departure: ${formattedDate}</p>
         </div>
         <div class="adv-action-row">
           <button class="adv-delete-btn" data-id="${trip.id}"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
-      <p class="adv-desc">${trip.notes || 'No trip descriptions.'}</p>
+      <p class="adv-desc">${displayNotes}</p>
       <div class="checklist-wrapper">
         <div class="checklist-title">
           <span>Itinerary & Packing List</span>
