@@ -21,6 +21,56 @@ function parseLocalDate(dateStr) {
   return parsed;
 }
 
+// Robust checklist parser helper
+function safeParseChecklist(val) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string' && val.trim() !== '') {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Failed to parse checklist JSON string:", e);
+      return [];
+    }
+  }
+  return [];
+}
+
+// Dynamically populates preference and celebration target dropdown options with active nicknames
+function populateTargetOptions(selectId, selectedValue = "partner2") {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.innerHTML = "";
+
+  let p1Name = "Creator";
+  let p2Name = "Partner";
+
+  if (localSpaceData) {
+    p1Name = localSpaceData.partner1Name || "Creator";
+    p2Name = localSpaceData.partner2Name || "Partner";
+  } else {
+    const sandboxProfile = JSON.parse(localStorage.getItem("hb_sandbox_profile"));
+    if (sandboxProfile) {
+      p1Name = sandboxProfile.partner1Name || "Creator";
+      p2Name = sandboxProfile.partner2Name || "Partner";
+    }
+  }
+
+  // Option for Partner (partner2)
+  const optPartner = document.createElement("option");
+  optPartner.value = "partner2";
+  optPartner.innerText = `For ${p2Name}`;
+  if (selectedValue === "partner2") optPartner.selected = true;
+  select.appendChild(optPartner);
+
+  // Option for Creator (partner1)
+  const optCreator = document.createElement("option");
+  optCreator.value = "partner1";
+  optCreator.innerText = `For ${p1Name}`;
+  if (selectedValue === "partner1") optCreator.selected = true;
+  select.appendChild(optCreator);
+}
+
 // --- GLOBAL VARIABLES & DATA STORE ---
 let localSpaceData = null;
 let localLovesHates = [];
@@ -601,11 +651,31 @@ function renderLovesHates(searchQuery = "") {
       };
       const catIcon = categoryIconMap[pref.category] || "fa-bookmark";
 
+      let p1Name = "Creator";
+      let p2Name = "Partner";
+      if (localSpaceData) {
+        p1Name = localSpaceData.partner1Name || "Creator";
+        p2Name = localSpaceData.partner2Name || "Partner";
+      } else {
+        const sandboxProfile = JSON.parse(localStorage.getItem("hb_sandbox_profile"));
+        if (sandboxProfile) {
+          p1Name = sandboxProfile.partner1Name || "Creator";
+          p2Name = sandboxProfile.partner2Name || "Partner";
+        }
+      }
+
+      const roleClass = pref.targetRole === "partner1" ? "creator" : "partner";
+      const targetName = pref.targetRole === "partner1" ? p1Name : p2Name;
+      const targetEmoji = pref.targetRole === "partner1" ? "👤" : "💖";
+
       card.innerHTML = `
         <div class="pref-card-header">
-          <div class="pref-badge-row">
+          <div class="pref-badge-row" style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
             <span class="category-badge ${pref.category.toLowerCase()}">
               <i class="fa-solid ${catIcon}"></i> ${pref.category}
+            </span>
+            <span class="target-role-badge ${roleClass}">
+              ${targetEmoji} ${targetName}
             </span>
           </div>
           <div class="pref-actions">
@@ -650,6 +720,8 @@ function openEditPreference(pref) {
   document.getElementById("pref-category").value = pref.category;
   document.getElementById("pref-notes").value = pref.notes || "";
   
+  populateTargetOptions("pref-target", pref.targetRole || "partner2");
+
   document.getElementById("pref-modal-title").innerText = "Edit Preference Detail";
   document.getElementById("modal-preference").classList.remove("hidden");
 }
@@ -845,13 +917,34 @@ function renderEvents() {
     const displayTitle = cel.title || cel.Title || cel.name || cel.Name || "Unnamed Celebration";
     const displayNotes = cel.notes || cel.Notes || cel.description || cel.Description || "No description notes.";
 
-    const isGiftChecklist = cel.checklist && cel.checklist.length > 0;
     const progress = calculateChecklistProgress(cel.checklist);
+
+    let p1Name = "Creator";
+    let p2Name = "Partner";
+    if (localSpaceData) {
+      p1Name = localSpaceData.partner1Name || "Creator";
+      p2Name = localSpaceData.partner2Name || "Partner";
+    } else {
+      const sandboxProfile = JSON.parse(localStorage.getItem("hb_sandbox_profile"));
+      if (sandboxProfile) {
+        p1Name = sandboxProfile.partner1Name || "Creator";
+        p2Name = sandboxProfile.partner2Name || "Partner";
+      }
+    }
+
+    const roleClass = cel.targetRole === "partner1" ? "creator" : "partner";
+    const targetName = cel.targetRole === "partner1" ? p1Name : p2Name;
+    const targetEmoji = cel.targetRole === "partner1" ? "👤" : "💖";
 
     card.innerHTML = `
       <div class="adventure-card-header">
         <div class="adv-title-box">
-          <h4>${displayTitle}</h4>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+            <h4 style="margin: 0;">${displayTitle}</h4>
+            <span class="target-role-badge ${roleClass}">
+              ${targetEmoji} ${targetName}
+            </span>
+          </div>
           <p><i class="fa-solid fa-cake-candles"></i> ${formattedDate}</p>
         </div>
         <div class="adv-action-row">
@@ -885,7 +978,7 @@ function renderEvents() {
       const input = e.target.querySelector("input");
       const text = input.value.trim();
       if (text) {
-        const list = cel.checklist || [];
+        const list = safeParseChecklist(cel.checklist);
         list.push({ text: text, done: false });
         db.updateEventChecklist(cel.id, list);
         input.value = "";
@@ -954,7 +1047,7 @@ function renderEvents() {
       const input = e.target.querySelector("input");
       const text = input.value.trim();
       if (text) {
-        const list = trip.checklist || [];
+        const list = safeParseChecklist(trip.checklist);
         list.push({ text: text, done: false });
         db.updateEventChecklist(trip.id, list);
         input.value = "";
@@ -972,16 +1065,17 @@ function renderEvents() {
 }
 
 function calculateChecklistProgress(list) {
-  if (!list || list.length === 0) return 0;
-  const doneCount = list.filter(item => item.done).length;
-  return Math.round((doneCount / list.length) * 100);
+  const parsedList = safeParseChecklist(list);
+  if (parsedList.length === 0) return 0;
+  const doneCount = parsedList.filter(item => item.done).length;
+  return Math.round((doneCount / parsedList.length) * 100);
 }
 
 function renderChecklistItems(evt, elementId) {
   const container = document.getElementById(elementId);
   container.innerHTML = "";
 
-  const list = evt.checklist || [];
+  const list = safeParseChecklist(evt.checklist);
 
   list.forEach((item, index) => {
     const row = document.createElement("div");
@@ -1264,6 +1358,9 @@ function initSettingsAndForms() {
       if (formPref) formPref.reset();
       if (prefId) prefId.value = "";
       if (prefTitle) prefTitle.innerText = "Add Loves/Hates Detail";
+      
+      populateTargetOptions("pref-target");
+
       if (prefModal) prefModal.classList.remove("hidden");
     });
   }
@@ -1285,6 +1382,9 @@ function initSettingsAndForms() {
     btnAddCelebration.addEventListener("click", () => {
       const formCel = document.getElementById("form-celebration");
       if (formCel) formCel.reset();
+
+      populateTargetOptions("cel-target");
+
       if (celModal) celModal.classList.remove("hidden");
     });
   }
@@ -1416,11 +1516,13 @@ function initSettingsAndForms() {
     formPreferenceSubmit.addEventListener("submit", async (e) => {
       e.preventDefault();
       const id = document.getElementById("pref-id").value;
+      const targetEl = document.getElementById("pref-target");
       const payload = {
         type: document.querySelector('input[name="pref-type"]:checked').value,
         item: document.getElementById("pref-item").value.trim(),
         category: document.getElementById("pref-category").value,
-        notes: document.getElementById("pref-notes").value.trim()
+        notes: document.getElementById("pref-notes").value.trim(),
+        targetRole: targetEl ? targetEl.value : "partner2"
       };
 
       if (id) {
@@ -1462,11 +1564,13 @@ function initSettingsAndForms() {
   if (formCelebrationSubmit) {
     formCelebrationSubmit.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const targetEl = document.getElementById("cel-target");
       const payload = {
         type: "birthday",
         title: document.getElementById("cel-title").value.trim(),
         date: document.getElementById("cel-date").value,
         notes: document.getElementById("cel-notes").value.trim(),
+        targetRole: targetEl ? targetEl.value : "partner2",
         checklist: []
       };
 

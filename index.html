@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="index.css?v=3">
+  <link rel="stylesheet" href="index.css?v=18">
 </head>
 <body>
 
@@ -505,6 +505,14 @@
         </div>
 
         <div class="form-group">
+          <label for="pref-target">Whose Preference is this?</label>
+          <select id="pref-target" required>
+            <option value="partner2">Significant Other</option>
+            <option value="partner1">Me</option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label for="pref-category">Category</label>
           <select id="pref-category" required>
             <option value="Food">Food & Dining</option>
@@ -582,6 +590,14 @@
         <div class="form-group">
           <label for="cel-title">Celebration Title</label>
           <input type="text" id="cel-title" placeholder="e.g., alex's 25th birthday, 2 year anniversary" required>
+        </div>
+
+        <div class="form-group">
+          <label for="cel-target">Whose Celebration is this?</label>
+          <select id="cel-target" required>
+            <option value="partner2">Significant Other</option>
+            <option value="partner1">Me</option>
+          </select>
         </div>
 
         <div class="form-group">
@@ -682,7 +698,7 @@
   <!-- Core App Libraries -->
   <!-- We load Firebase JS SDK modularly or globally via web scripts. 
        Using the CDN modules below ensures we have everything needed. -->
-  <script src="database.js?v=16" type="module"></script>
-  <script src="app.js?v=16" type="module"></script>
+  <script src="database.js?v=18" type="module"></script>
+  <script src="app.js?v=18" type="module"></script>
 </body>
 </html>

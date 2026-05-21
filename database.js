@@ -36,6 +36,7 @@ const mapLoveHateRow = (row) => ({
   item: row.item,
   category: row.category,
   notes: row.notes,
+  targetRole: row.target_role || row.targetRole || "partner2",
   createdAt: new Date(row.created_at).getTime()
 });
 
@@ -50,14 +51,30 @@ const mapMemoryRow = (row) => ({
   createdAt: new Date(row.created_at).getTime()
 });
 
+function safeParseChecklist(val) {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string' && val.trim() !== '') {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error("Failed to parse checklist JSON string:", e);
+      return [];
+    }
+  }
+  return [];
+}
+
 const mapCelebrationRow = (row) => ({
   id: row.id,
   type: row.type,
   title: row.title,
   date: row.date,
   notes: row.notes,
-  checklist: Array.isArray(row.checklist) ? row.checklist : []
+  targetRole: row.target_role || row.targetRole || "partner2",
+  checklist: safeParseChecklist(row.checklist)
 });
+
 
 class HeartboundDatabase {
   constructor() {
@@ -534,7 +551,12 @@ class HeartboundDatabase {
         this.subscriptions.lovesHates = onSnapshot(collRef, (snap) => {
           const items = [];
           snap.forEach(doc => {
-            items.push({ id: doc.id, ...doc.data() });
+            const data = doc.data();
+            items.push({ 
+              id: doc.id, 
+              ...data,
+              targetRole: data.targetRole || data.target_role || "partner2"
+            });
           });
           items.sort((a, b) => {
             const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
@@ -573,7 +595,11 @@ class HeartboundDatabase {
       // Local Sandbox
       const loadLocal = () => {
         const items = JSON.parse(localStorage.getItem("hb_sandbox_loves_hates")) || [];
-        onUpdate(items);
+        const mapped = items.map(item => ({
+          ...item,
+          targetRole: item.targetRole || "partner2"
+        }));
+        onUpdate(mapped);
       };
       loadLocal();
       window.addEventListener("hb_local_loves_hates_updated", loadLocal);
@@ -590,6 +616,7 @@ class HeartboundDatabase {
           item: pref.item,
           category: pref.category,
           notes: pref.notes,
+          targetRole: pref.targetRole || "partner2",
           createdAt: serverTimestamp()
         };
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "loves_hates");
@@ -601,7 +628,8 @@ class HeartboundDatabase {
           type: pref.type,
           item: pref.item,
           category: pref.category,
-          notes: pref.notes
+          notes: pref.notes,
+          target_role: pref.targetRole || "partner2"
         };
         const { error } = await this.supabaseClient
           .from("loves_hates")
@@ -616,6 +644,7 @@ class HeartboundDatabase {
         item: pref.item,
         category: pref.category,
         notes: pref.notes,
+        targetRole: pref.targetRole || "partner2",
         createdAt: Date.now()
       };
       const items = JSON.parse(localStorage.getItem("hb_sandbox_loves_hates")) || [];
@@ -834,7 +863,8 @@ class HeartboundDatabase {
             events.push({ 
               id: doc.id, 
               ...data,
-              checklist: Array.isArray(data.checklist) ? data.checklist : []
+              targetRole: data.targetRole || data.target_role || "partner2",
+              checklist: safeParseChecklist(data.checklist)
             });
           });
           events.sort((a, b) => {
@@ -874,9 +904,14 @@ class HeartboundDatabase {
       // Local Sandbox
       const loadLocal = () => {
         const events = JSON.parse(localStorage.getItem("hb_sandbox_events")) || [];
+        const mapped = events.map(e => ({
+          ...e,
+          targetRole: e.targetRole || "partner2",
+          checklist: safeParseChecklist(e.checklist)
+        }));
         // Sort chronologically ascending
-        events.sort((a,b) => new Date(a.date) - new Date(b.date));
-        onUpdate(events);
+        mapped.sort((a,b) => new Date(a.date) - new Date(b.date));
+        onUpdate(mapped);
       };
       loadLocal();
       window.addEventListener("hb_local_events_updated", loadLocal);
@@ -894,6 +929,7 @@ class HeartboundDatabase {
           date: evt.date,
           notes: evt.notes,
           checklist: evt.checklist || [],
+          targetRole: evt.targetRole || "partner2",
           createdAt: serverTimestamp()
         };
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "celebrations");
@@ -906,7 +942,8 @@ class HeartboundDatabase {
           title: evt.title,
           date: evt.date,
           notes: evt.notes,
-          checklist: evt.checklist || []
+          checklist: evt.checklist || [],
+          target_role: evt.targetRole || "partner2"
         };
         const { error } = await this.supabaseClient
           .from("celebrations")
@@ -922,6 +959,7 @@ class HeartboundDatabase {
         date: evt.date,
         notes: evt.notes,
         checklist: evt.checklist || [],
+        targetRole: evt.targetRole || "partner2",
         createdAt: Date.now()
       };
       const events = JSON.parse(localStorage.getItem("hb_sandbox_events")) || [];
@@ -1026,7 +1064,14 @@ class HeartboundDatabase {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "loves_hates");
         const snap = await getDocs(collRef);
         const items = [];
-        snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => {
+          const data = d.data();
+          items.push({ 
+            id: d.id, 
+            ...data,
+            targetRole: data.targetRole || data.target_role || "partner2"
+          });
+        });
         items.sort((a, b) => {
           const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
           const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
@@ -1091,7 +1136,8 @@ class HeartboundDatabase {
           items.push({
             id: d.id,
             ...data,
-            checklist: Array.isArray(data.checklist) ? data.checklist : []
+            targetRole: data.targetRole || data.target_role || "partner2",
+            checklist: safeParseChecklist(data.checklist)
           });
         });
         items.sort((a, b) => {

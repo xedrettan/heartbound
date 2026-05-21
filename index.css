@@ -1839,3 +1839,38 @@ button, input, select, textarea {
   background-color: #1b0714;
   color: var(--text-main);
 }
+
+/* -- Target Role Badges --------------------------------------------------- */
+.target-role-badge {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  backdrop-filter: blur(4px);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.target-role-badge.creator {
+  background: rgba(255, 107, 139, 0.15);
+  border-color: rgba(255, 107, 139, 0.3);
+  color: var(--primary-color);
+}
+
+.target-role-badge.partner {
+  background: rgba(0, 242, 254, 0.12);
+  border-color: rgba(0, 242, 254, 0.28);
+  color: var(--accent-teal);
+}
+
+.target-role-badge .badge-icon {
+  font-size: 11px;
+}
