@@ -19,37 +19,55 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 
-// --- ROW MAPPERS FOR SUPABASE TO JS SCHEMA ---
-const mapSpaceRow = (row) => ({
-  partner1Name: row.partner1_name,
-  partner1Avatar: row.partner1_avatar,
-  partner2Name: row.partner2_name,
-  partner2Avatar: row.partner2_avatar,
-  anniversaryDate: row.anniversary_date,
-  partner1Birthday: row.partner1_birthday,
-  partner2Birthday: row.partner2_birthday || row.partner_birthday
-});
+// --- ROBUST UNIFIED MODEL MAPPERS FOR SUPABASE & FIREBASE ---
 
-const mapLoveHateRow = (row) => ({
-  id: row.id,
-  type: row.type,
-  item: row.item,
-  category: row.category,
-  notes: row.notes,
-  targetRole: row.target_role || row.targetRole || "partner2",
-  createdAt: new Date(row.created_at).getTime()
-});
-
-const mapMemoryRow = (row) => ({
-  id: row.id,
-  title: row.title,
-  description: row.description,
-  date: row.date,
-  feeling: row.feeling,
-  coverUrl: row.cover_url,
-  heartsCount: row.hearts_count,
-  createdAt: new Date(row.created_at).getTime()
-});
+function normalizeDate(val) {
+  if (!val) return "";
+  
+  // If it's a Firestore Timestamp object
+  if (typeof val.toDate === 'function') {
+    try {
+      return val.toDate().toISOString().split("T")[0];
+    } catch (e) {
+      console.error("normalizeDate: toDate() failed", e);
+    }
+  }
+  
+  // If it's a Date object
+  if (val instanceof Date) {
+    try {
+      return val.toISOString().split("T")[0];
+    } catch (e) {}
+  }
+  
+  // If it's a string, try parsing or cleaning it
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed === "") return "";
+    // If it looks like ISO date YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      return trimmed;
+    }
+    // If it contains timestamp or other format, try to parse
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().split("T")[0];
+    }
+    return trimmed;
+  }
+  
+  // If it is a number (timestamp)
+  if (typeof val === 'number') {
+    try {
+      const parsed = new Date(val);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split("T")[0];
+      }
+    } catch (e) {}
+  }
+  
+  return "";
+}
 
 function safeParseChecklist(val) {
   if (Array.isArray(val)) return val;
@@ -65,15 +83,105 @@ function safeParseChecklist(val) {
   return [];
 }
 
-const mapCelebrationRow = (row) => ({
-  id: row.id,
-  type: row.type,
-  title: row.title,
-  date: row.date,
-  notes: row.notes,
-  targetRole: row.target_role || row.targetRole || "partner2",
-  checklist: safeParseChecklist(row.checklist)
-});
+const mapSpaceData = (row) => {
+  if (!row) return null;
+  return {
+    partner1Name: row.partner1Name || row.partner1_name || row.userName || "Alex",
+    partner1Avatar: row.partner1Avatar || row.partner1_avatar || row.userAvatar || "👤",
+    partner2Name: row.partner2Name || row.partner2_name || row.partnerName || "Taylor",
+    partner2Avatar: row.partner2Avatar || row.partner2_avatar || row.partnerAvatar || "💖",
+    anniversaryDate: normalizeDate(row.anniversaryDate || row.anniversary_date),
+    partner1Birthday: normalizeDate(row.partner1Birthday || row.partner1_birthday),
+    partner2Birthday: normalizeDate(row.partner2Birthday || row.partner2_birthday || row.partnerBirthday || row.partner_birthday)
+  };
+};
+
+const mapLoveHateData = (id, row) => {
+  if (!row) return null;
+  const type = String(row.type || row.Type || "love").toLowerCase().trim();
+  const item = row.item || row.Item || "";
+  const category = row.category || row.Category || "Other";
+  const notes = row.notes || row.Notes || "";
+  const targetRole = row.targetRole || row.target_role || row.TargetRole || "partner2";
+  
+  let createdAt = Date.now();
+  const rawCreated = row.createdAt || row.created_at || row.CreatedAt;
+  if (rawCreated) {
+    if (typeof rawCreated.toMillis === 'function') {
+      createdAt = rawCreated.toMillis();
+    } else {
+      const parsedTime = new Date(rawCreated).getTime();
+      if (!isNaN(parsedTime)) createdAt = parsedTime;
+    }
+  }
+
+  return {
+    id,
+    type,
+    item,
+    category,
+    notes,
+    targetRole,
+    createdAt
+  };
+};
+
+const mapMemoryData = (id, row) => {
+  if (!row) return null;
+  const title = row.title || row.Title || "Untitled Memory";
+  const description = row.description || row.Description || "";
+  const date = normalizeDate(row.date || row.Date);
+  const feeling = row.feeling || row.Feeling || "🥰";
+  const coverUrl = row.coverUrl || row.cover_url || row.CoverUrl || "";
+  const heartsCount = Number(row.heartsCount || row.hearts_count || row.HeartsCount || 0);
+
+  let createdAt = Date.now();
+  const rawCreated = row.createdAt || row.created_at || row.CreatedAt;
+  if (rawCreated) {
+    if (typeof rawCreated.toMillis === 'function') {
+      createdAt = rawCreated.toMillis();
+    } else {
+      const parsedTime = new Date(rawCreated).getTime();
+      if (!isNaN(parsedTime)) createdAt = parsedTime;
+    }
+  }
+
+  return {
+    id,
+    title,
+    description,
+    date,
+    feeling,
+    coverUrl,
+    heartsCount,
+    createdAt
+  };
+};
+
+const mapCelebrationData = (id, row) => {
+  if (!row) return null;
+  const type = String(row.type || row.Type || "celebration").toLowerCase().trim();
+  const title = row.title || row.Title || row.name || row.Name || "Unnamed Event";
+  const date = normalizeDate(row.date || row.Date);
+  const notes = row.notes || row.Notes || row.description || row.Description || "";
+  const targetRole = row.targetRole || row.target_role || row.TargetRole || "partner2";
+  const checklist = safeParseChecklist(row.checklist || row.Checklist);
+
+  return {
+    id,
+    type,
+    title,
+    date,
+    notes,
+    targetRole,
+    checklist
+  };
+};
+
+const mapSpaceRow = (row) => mapSpaceData(row);
+const mapLoveHateRow = (row) => mapLoveHateData(row.id, row);
+const mapMemoryRow = (row) => mapMemoryData(row.id, row);
+const mapCelebrationRow = (row) => mapCelebrationData(row.id, row);
 
 
 class HeartboundDatabase {
@@ -370,7 +478,7 @@ class HeartboundDatabase {
       try {
         const spaceDocRef = doc(this.firestore, "spaces", spaceId);
         const snap = await getDoc(spaceDocRef);
-        return snap.exists() ? snap.data() : null;
+        return snap.exists() ? mapSpaceData(snap.data()) : null;
       } catch (e) {
         console.error("fetchSpace Firebase error:", e);
         return null;
@@ -405,7 +513,7 @@ class HeartboundDatabase {
         const spaceDocRef = doc(this.firestore, "spaces", this.activeSpaceId);
         this.subscriptions.space = onSnapshot(spaceDocRef, (snap) => {
           if (snap.exists()) {
-            onUpdate(snap.data());
+            onUpdate(mapSpaceData(snap.data()));
           }
         }, (err) => {
           console.error("Space subscription error:", err);
@@ -550,19 +658,11 @@ class HeartboundDatabase {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "loves_hates");
         this.subscriptions.lovesHates = onSnapshot(collRef, (snap) => {
           const items = [];
-          snap.forEach(doc => {
-            const data = doc.data();
-            items.push({ 
-              id: doc.id, 
-              ...data,
-              targetRole: data.targetRole || data.target_role || "partner2"
-            });
+          snap.forEach(d => {
+            const mapped = mapLoveHateData(d.id, d.data());
+            if (mapped) items.push(mapped);
           });
-          items.sort((a, b) => {
-            const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-            const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-            return timeB - timeA;
-          });
+          items.sort((a, b) => b.createdAt - a.createdAt);
           onUpdate(items);
         }, (err) => console.error("Firebase lovesHates onSnapshot error:", err));
       } else if (provider === "supabase") {
@@ -688,12 +788,13 @@ class HeartboundDatabase {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "memories");
         this.subscriptions.memories = onSnapshot(collRef, (snap) => {
           const memories = [];
-          snap.forEach(doc => {
-            memories.push({ id: doc.id, ...doc.data() });
+          snap.forEach(d => {
+            const mapped = mapMemoryData(d.id, d.data());
+            if (mapped) memories.push(mapped);
           });
           memories.sort((a, b) => {
-            const dA = new Date(a.date || 0).getTime();
-            const dB = new Date(b.date || 0).getTime();
+            const dA = a.date ? new Date(a.date).getTime() : 0;
+            const dB = b.date ? new Date(b.date).getTime() : 0;
             return (isNaN(dB) ? 0 : dB) - (isNaN(dA) ? 0 : dA);
           });
           onUpdate(memories);
@@ -859,23 +960,8 @@ class HeartboundDatabase {
         this.subscriptions.events = onSnapshot(collRef, (snap) => {
           const events = [];
           snap.forEach(docSnap => {
-            const data = docSnap.data();
-            // Normalize: handle capitalized field names from manual Firestore entries
-            const normalizedTitle = data.title || data.Title || data.name || data.Name || "";
-            const rawDate = data.date || data.Date || "";
-            const normalizedDate = (rawDate && rawDate.toDate) ? rawDate.toDate().toISOString().split("T")[0] : rawDate;
-            const normalizedNotes = data.notes || data.Notes || data.description || data.Description || "";
-            const normalizedType = (data.type || data.Type || "celebration").toLowerCase();
-            events.push({
-              ...data,
-              id: docSnap.id,
-              title: normalizedTitle,
-              date: normalizedDate,
-              notes: normalizedNotes,
-              type: normalizedType,
-              targetRole: data.targetRole || data.target_role || "partner2",
-              checklist: safeParseChecklist(data.checklist)
-            });
+            const mapped = mapCelebrationData(docSnap.id, docSnap.data());
+            if (mapped) events.push(mapped);
           });
           events.sort((a, b) => {
             const tA = a.date ? new Date(a.date).getTime() : 0;
@@ -1051,7 +1137,7 @@ class HeartboundDatabase {
       } else if (provider === "firebase") {
         const spaceDocRef = doc(this.firestore, "spaces", this.activeSpaceId);
         const snap = await getDoc(spaceDocRef);
-        if (snap.exists()) this.callbacks.space(snap.data());
+        if (snap.exists()) this.callbacks.space(mapSpaceData(snap.data()));
       }
     } catch (e) {
       console.error("refreshSpaceInfo failed:", e);
@@ -1076,18 +1162,10 @@ class HeartboundDatabase {
         const snap = await getDocs(collRef);
         const items = [];
         snap.forEach(d => {
-          const data = d.data();
-          items.push({ 
-            id: d.id, 
-            ...data,
-            targetRole: data.targetRole || data.target_role || "partner2"
-          });
+          const mapped = mapLoveHateData(d.id, d.data());
+          if (mapped) items.push(mapped);
         });
-        items.sort((a, b) => {
-          const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-          const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-          return timeB - timeA;
-        });
+        items.sort((a, b) => b.createdAt - a.createdAt);
         this.callbacks.lovesHates(items);
       }
     } catch (e) {
@@ -1112,10 +1190,13 @@ class HeartboundDatabase {
         const collRef = collection(this.firestore, "spaces", this.activeSpaceId, "memories");
         const snap = await getDocs(collRef);
         const items = [];
-        snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => {
+          const mapped = mapMemoryData(d.id, d.data());
+          if (mapped) items.push(mapped);
+        });
         items.sort((a, b) => {
-          const dA = new Date(a.date || 0).getTime();
-          const dB = new Date(b.date || 0).getTime();
+          const dA = a.date ? new Date(a.date).getTime() : 0;
+          const dB = b.date ? new Date(b.date).getTime() : 0;
           return (isNaN(dB) ? 0 : dB) - (isNaN(dA) ? 0 : dA);
         });
         this.callbacks.memories(items);
@@ -1143,23 +1224,8 @@ class HeartboundDatabase {
         const snap = await getDocs(collRef);
         const items = [];
         snap.forEach(d => {
-          const data = d.data();
-          // Normalize: handle capitalized field names from manual Firestore entries
-          const normalizedTitle = data.title || data.Title || data.name || data.Name || "";
-          const rawDate = data.date || data.Date || "";
-          const normalizedDate = (rawDate && rawDate.toDate) ? rawDate.toDate().toISOString().split("T")[0] : rawDate;
-          const normalizedNotes = data.notes || data.Notes || data.description || data.Description || "";
-          const normalizedType = (data.type || data.Type || "celebration").toLowerCase();
-          items.push({
-            ...data,
-            id: d.id,
-            title: normalizedTitle,
-            date: normalizedDate,
-            notes: normalizedNotes,
-            type: normalizedType,
-            targetRole: data.targetRole || data.target_role || "partner2",
-            checklist: safeParseChecklist(data.checklist)
-          });
+          const mapped = mapCelebrationData(d.id, d.data());
+          if (mapped) items.push(mapped);
         });
         items.sort((a, b) => {
           const tA = a.date ? new Date(a.date).getTime() : 0;

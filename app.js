@@ -540,7 +540,7 @@ function updateCountdownUI() {
   }
     
   if (targetBirthdayStr) {
-    const birthdayStr = targetBirthdayStr;
+    const birthdayStr = String(targetBirthdayStr || "").trim();
     const parts = birthdayStr.split("-").map(Number);
     if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
       const [bYear, bMonth, bDay] = parts;
@@ -635,13 +635,17 @@ function renderLovesHates(searchQuery = "") {
   const emptyState = document.getElementById("pref-empty-state");
   grid.innerHTML = "";
 
-  // Filter items
+  // Filter items safely with extreme defense against missing/casing issues in manual database records
   const filtered = localLovesHates.filter(item => {
-    const matchesType = item.type === activeTabType;
-    const matchesCategory = activeCategoryFilter === "all" || item.category === activeCategoryFilter;
+    if (!item) return false;
+    const matchesType = String(item.type || "").toLowerCase() === activeTabType;
+    const matchesCategory = activeCategoryFilter === "all" || String(item.category || "").toLowerCase() === activeCategoryFilter.toLowerCase();
+    
+    const itemStr = String(item.item || "").toLowerCase();
+    const notesStr = String(item.notes || "").toLowerCase();
     const matchesSearch = !searchQuery || 
-      item.item.toLowerCase().includes(searchQuery) || 
-      (item.notes && item.notes.toLowerCase().includes(searchQuery));
+      itemStr.includes(searchQuery) || 
+      notesStr.includes(searchQuery);
     
     return matchesType && matchesCategory && matchesSearch;
   });
@@ -826,8 +830,8 @@ function renderMemories() {
               <span class="memory-date">${formattedDate}</span>
             </div>
             <div class="memory-text-content">
-              <h4>${memory.title}</h4>
-              <p>${memory.description.replace(/\n/g, '<br>')}</p>
+              <h4>${memory.title || "Untitled Memory"}</h4>
+              <p>${(memory.description || "").replace(/\n/g, '<br>')}</p>
               <div class="memory-footer">
                 <button class="btn-love-memory" data-id="${memory.id}">
                   <i class="fa-solid fa-heart"></i> Shower with Love (<span class="hearts-cnt">${memory.heartsCount || 0}</span>)
