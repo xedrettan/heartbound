@@ -218,6 +218,18 @@ class HeartboundDatabase {
   loadLocalConfig() {
     try {
       this.dbConfig = JSON.parse(localStorage.getItem("hb_db_config"));
+      
+      // Default fallback Firebase config for all users
+      if (!this.dbConfig) {
+        this.dbConfig = {
+          provider: "firebase",
+          apiKey: "AIzaSyBdifZtIlVrKtnZxkHBycvMNRGpnxs5Weo",
+          projectId: "heartbound-fb84e",
+          appId: "1:1057660034330:web:e30c2c4338247d8de220a3"
+        };
+        localStorage.setItem("hb_db_config", JSON.stringify(this.dbConfig));
+      }
+      
       this.activeSpaceId = localStorage.getItem("hb_space_id");
     } catch (e) {
       console.error("Failed to load local config", e);

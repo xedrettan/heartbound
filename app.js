@@ -349,21 +349,15 @@ async function performLogout() {
     console.error("Error tearing down Firebase context on logout:", e);
   }
   
-  // 3. Nuclear clear local storage (by sweeping hb_ keys first, then using clear to ensure perfect blank slate)
+  // 3. Selectively clear space pairing and profile details from local storage (preserving database configuration)
   const keysToRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith("hb_")) {
+    if (key && key.startsWith("hb_") && key !== "hb_db_config") {
       keysToRemove.push(key);
     }
   }
   keysToRemove.forEach(key => localStorage.removeItem(key));
-  
-  try {
-    localStorage.clear();
-  } catch (e) {
-    console.error("Local storage clearance failed:", e);
-  }
   
   // 4. Force a hard, clean page reload to completely destroy active JS state
   window.location.href = window.location.origin + window.location.pathname;

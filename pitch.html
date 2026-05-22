@@ -974,8 +974,8 @@
           <div class="device-mockup">
             <!-- Header -->
             <div class="device-screen-header">
-              <span class="device-title"><i class="fa-solid fa-heart-pulse" style="color: var(--primary-color); margin-right: 4px;"></i> Heartbound</span>
-              <span class="device-status"><i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> Paired</span>
+              <span class="device-title" id="demo-device-title"><i class="fa-solid fa-heart-pulse" style="color: var(--primary-color); margin-right: 4px;"></i> Heartbound</span>
+              <span class="device-status" id="demo-device-status"><i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> Paired</span>
             </div>
             <!-- Dynamic tab content -->
             <div class="device-content">
@@ -1173,7 +1173,9 @@
     
   </div>
 
-  <script>
+  <script type="module">
+    import { db } from "./database.js";
+
     // --- PARTICLE GENERATION ---
     function initParticles() {
       const container = document.getElementById("particle-container");
@@ -1293,11 +1295,360 @@
         }
       });
     }
+
+    // --- DATE COUNTDOWN HELPERS ---
+    function getDaysUntil(dateStr) {
+      if (!dateStr) return null;
+      const parts = dateStr.split('-');
+      if (parts.length < 2) return null;
+      
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const currentYear = today.getFullYear();
+      let month, day;
+      if (parts.length === 3) {
+        month = parseInt(parts[1]) - 1;
+        day = parseInt(parts[2]);
+      } else {
+        month = parseInt(parts[0]) - 1;
+        day = parseInt(parts[1]);
+      }
+      
+      let nextOccur = new Date(currentYear, month, day);
+      nextOccur.setHours(0, 0, 0, 0);
+      
+      if (nextOccur < today) {
+        nextOccur.setFullYear(currentYear + 1);
+      }
+      
+      const diffTime = nextOccur.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    }
+
+    function getDaysUntilOneOff(dateStr) {
+      if (!dateStr) return null;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const target = new Date(dateStr);
+      target.setHours(0, 0, 0, 0);
+      
+      if (isNaN(target.getTime())) return null;
+      if (target < today) return null;
+      
+      const diffTime = target.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return diffDays;
+    }
+
+    // --- DYNAMIC DATA RENDERING SYSTEM ---
+    let currentSpaceData = null;
+    let currentLovesHates = [];
+    let currentMemories = [];
+    let currentEvents = [];
+
+    function updateMockupHeader() {
+      const titleEl = document.getElementById("demo-device-title");
+      const statusEl = document.getElementById("demo-device-status");
+      
+      const isPaired = db.isPaired();
+      const status = db.getConnectionStatus();
+      const provider = db.getCloudProvider();
+      
+      if (statusEl) {
+        if (isPaired) {
+          if (provider === "firebase") {
+            statusEl.innerHTML = `<i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> Firebase Paired`;
+            statusEl.style.color = "var(--accent-teal)";
+            statusEl.style.borderColor = "rgba(0, 242, 254, 0.3)";
+            statusEl.style.background = "rgba(0, 242, 254, 0.15)";
+          } else if (provider === "supabase") {
+            statusEl.innerHTML = `<i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> Supabase Paired`;
+            statusEl.style.color = "var(--accent-teal)";
+            statusEl.style.borderColor = "rgba(0, 242, 254, 0.3)";
+            statusEl.style.background = "rgba(0, 242, 254, 0.15)";
+          } else {
+            statusEl.innerHTML = `<i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px;"></i> Sandbox Mode`;
+            statusEl.style.color = "var(--primary-color)";
+            statusEl.style.borderColor = "rgba(255, 107, 139, 0.3)";
+            statusEl.style.background = "rgba(255, 107, 139, 0.15)";
+          }
+        } else {
+          statusEl.innerHTML = `<i class="fa-solid fa-circle" style="font-size: 6px; margin-right: 4px; opacity: 0.5;"></i> Unpaired`;
+          statusEl.style.color = "var(--text-muted)";
+          statusEl.style.borderColor = "rgba(255, 255, 255, 0.1)";
+          statusEl.style.background = "rgba(255, 255, 255, 0.05)";
+        }
+      }
+      
+      if (titleEl) {
+        if (currentSpaceData && (currentSpaceData.partner1Name || currentSpaceData.partner2Name)) {
+          const p1 = currentSpaceData.partner1Name || "Alex";
+          const p2 = currentSpaceData.partner2Name || "Taylor";
+          titleEl.innerHTML = `<i class="fa-solid fa-heart-pulse" style="color: var(--primary-color); margin-right: 4px;"></i> ${p1} & ${p2}`;
+        } else {
+          titleEl.innerHTML = `<i class="fa-solid fa-heart-pulse" style="color: var(--primary-color); margin-right: 4px;"></i> Heartbound`;
+        }
+      }
+    }
+
+    function renderLovesHates(items) {
+      const container = document.querySelector("#demo-tab-1 > div");
+      if (!container) return;
+      
+      if (!items || items.length === 0) {
+        const p1 = currentSpaceData?.partner1Name || 'Alex';
+        const p2 = currentSpaceData?.partner2Name || 'Taylor';
+        container.innerHTML = `
+          <div class="demo-pref-card">
+            <span class="demo-pref-tag">${p1}</span>
+            <h6>Spicy Salmon Rolls 🍣</h6>
+            <p>Level: Love. Category: Food.</p>
+          </div>
+          <div class="demo-pref-card" style="border-color: rgba(0, 242, 254, 0.2); background: rgba(0, 242, 254, 0.05);">
+            <span class="demo-pref-tag" style="background: rgba(0, 242, 254, 0.15); color: var(--accent-teal);">${p2}</span>
+            <h6>Cilantro 🌿</h6>
+            <p>Level: Hate. Category: Food.</p>
+          </div>
+        `;
+        return;
+      }
+      
+      let html = "";
+      const first3 = items.slice(0, 3);
+      first3.forEach(pref => {
+        const isPartner2 = pref.targetRole === "partner2";
+        const name = isPartner2 ? (currentSpaceData?.partner2Name || "Taylor") : (currentSpaceData?.partner1Name || "Alex");
+        const tagStyle = isPartner2 
+          ? 'background: rgba(0, 242, 254, 0.15); color: var(--accent-teal);' 
+          : 'background: rgba(255, 107, 139, 0.15); color: var(--primary-color);';
+        const cardStyle = isPartner2 
+          ? 'border-color: rgba(0, 242, 254, 0.2); background: rgba(0, 242, 254, 0.05);' 
+          : 'border-color: rgba(255, 107, 139, 0.2); background: rgba(255, 107, 139, 0.05);';
+        
+        let icon = "❤️";
+        if (pref.type === "hate") icon = "❌";
+        else if (pref.category === "Food") icon = "🍔";
+        else if (pref.category === "Activity") icon = "✨";
+        else if (pref.category === "Gift") icon = "🎁";
+        
+        html += `
+          <div class="demo-pref-card" style="${cardStyle}">
+            <span class="demo-pref-tag" style="${tagStyle}">${name}</span>
+            <h6>${pref.item} ${icon}</h6>
+            <p>Level: ${pref.type.charAt(0).toUpperCase() + pref.type.slice(1)}. Category: ${pref.category || "General"}.</p>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderMemories(items) {
+      const container = document.querySelector("#demo-tab-2 .demo-timeline");
+      if (!container) return;
+      
+      if (!items || items.length === 0) {
+        container.innerHTML = `
+          <div class="demo-timeline-item">
+            <div class="demo-timeline-dot"></div>
+            <div class="demo-timeline-content">
+              <h6>First Anniversary Trip ✈️</h6>
+              <span>October 12 - 🥰 Extremely happy</span>
+            </div>
+          </div>
+          <div class="demo-timeline-item">
+            <div class="demo-timeline-dot" style="background: var(--accent-teal); box-shadow: 0 0 8px var(--accent-teal);"></div>
+            <div class="demo-timeline-content">
+              <h6>Adopted Cocoa 🐶</h6>
+              <span>February 18 - 💖 Cozy and warm</span>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      
+      let html = "";
+      const first2 = items.slice(0, 2);
+      first2.forEach((mem, idx) => {
+        const dotColor = idx === 0 ? 'var(--primary-color)' : 'var(--accent-teal)';
+        const dotGlow = idx === 0 ? 'var(--primary-color)' : 'var(--accent-teal)';
+        
+        let formattedDate = "";
+        if (mem.date) {
+          try {
+            const d = new Date(mem.date);
+            if (!isNaN(d.getTime())) {
+              const options = { month: 'long', day: 'numeric' };
+              formattedDate = d.toLocaleDateString('en-US', options);
+            }
+          } catch (e) {
+            console.error("Error formatting memory date:", e);
+          }
+        }
+        
+        const feelingText = mem.feeling ? ` - ${mem.feeling}` : "";
+        
+        html += `
+          <div class="demo-timeline-item">
+            <div class="demo-timeline-dot" style="background: ${dotColor}; box-shadow: 0 0 8px ${dotGlow};"></div>
+            <div class="demo-timeline-content">
+              <h6>${mem.title}</h6>
+              <span>${formattedDate}${feelingText}</span>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    function renderAdventures(eventsList) {
+      const container = document.querySelector("#demo-tab-3");
+      if (!container) return;
+      
+      const candidates = [];
+      
+      if (currentSpaceData?.anniversaryDate) {
+        const days = getDaysUntil(currentSpaceData.anniversaryDate);
+        if (days !== null) {
+          candidates.push({ title: "Anniversary Countdown", days: days, checklist: [] });
+        }
+      }
+      
+      if (currentSpaceData?.partner1Birthday) {
+        const days = getDaysUntil(currentSpaceData.partner1Birthday);
+        if (days !== null) {
+          candidates.push({ 
+            title: `${currentSpaceData.partner1Name || "Alex"}'s Birthday`, 
+            days: days, 
+            checklist: [] 
+          });
+        }
+      }
+      
+      if (currentSpaceData?.partner2Birthday) {
+        const days = getDaysUntil(currentSpaceData.partner2Birthday);
+        if (days !== null) {
+          candidates.push({ 
+            title: `${currentSpaceData.partner2Name || "Taylor"}'s Birthday`, 
+            days: days, 
+            checklist: [] 
+          });
+        }
+      }
+      
+      if (eventsList && eventsList.length > 0) {
+        eventsList.forEach(evt => {
+          if (evt.date) {
+            const days = getDaysUntilOneOff(evt.date);
+            if (days !== null) {
+              candidates.push({ 
+                title: evt.title, 
+                days: days, 
+                checklist: evt.checklist || [] 
+              });
+            }
+          }
+        });
+      }
+      
+      candidates.sort((a, b) => a.days - b.days);
+      
+      let activeEvent = candidates[0];
+      if (!activeEvent) {
+        activeEvent = {
+          title: "Anniversary Countdown",
+          days: 142,
+          checklist: [
+            { text: "Book hot-spring cabin", done: true },
+            { text: "Prepare gift packages", done: false }
+          ]
+        };
+      }
+      
+      let checklistHtml = "";
+      
+      if (activeEvent.checklist && activeEvent.checklist.length > 0) {
+        const first3 = activeEvent.checklist.slice(0, 3);
+        first3.forEach(item => {
+          const isDone = item.done;
+          const iconClass = isDone ? "fa-regular fa-square-check" : "fa-regular fa-square";
+          const iconStyle = isDone ? "color: var(--accent-teal);" : "color: var(--text-muted);";
+          const textStyle = isDone ? "text-decoration: line-through; color: var(--text-muted);" : "";
+          
+          checklistHtml += `
+            <div class="demo-checklist-item">
+              <i class="${iconClass}" style="${iconStyle}"></i>
+              <span style="${textStyle}">${item.text}</span>
+            </div>
+          `;
+        });
+      } else {
+        checklistHtml = `
+          <div class="demo-checklist-item">
+            <i class="fa-regular fa-square-check" style="color: var(--accent-teal);"></i> Coordinate dinner spot
+          </div>
+          <div class="demo-checklist-item">
+            <i class="fa-regular fa-square" style="color: var(--text-muted);"></i> Wrap surprise cards
+          </div>
+        `;
+      }
+      
+      container.innerHTML = `
+        <div class="demo-celebration">
+          <span style="font-size: 10px; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">${activeEvent.title}</span>
+          <div class="demo-clock">${activeEvent.days} Days Left</div>
+          <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 10px;">
+            ${checklistHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function setupRealtimeSubscriptions() {
+      console.log("Setting up pitch deck real-time subscriptions...");
+      
+      db.unsubscribeAll();
+      
+      db.subscribeSpaceInfo((space) => {
+        currentSpaceData = space;
+        updateMockupHeader();
+        renderLovesHates(currentLovesHates);
+        renderAdventures(currentEvents);
+      });
+      
+      db.subscribeLovesHates((items) => {
+        currentLovesHates = items;
+        renderLovesHates(items);
+      });
+      
+      db.subscribeMemories((items) => {
+        currentMemories = items;
+        renderMemories(items);
+      });
+      
+      db.subscribeEvents((items) => {
+        currentEvents = items;
+        renderAdventures(items);
+      });
+    }
+
+    // Bind to window for HTML click compatibility
+    window.nextSlide = nextSlide;
+    window.prevSlide = prevSlide;
+    window.goToSlide = goToSlide;
+    window.switchDemoTab = switchDemoTab;
     
     // Run initializations
     window.addEventListener("DOMContentLoaded", () => {
       initParticles();
       updateControls();
+      
+      // Initialize connection and start subscriptions
+      db.initConnection(() => {
+        setupRealtimeSubscriptions();
+      });
     });
   </script>
 </body>
