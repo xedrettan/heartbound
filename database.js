@@ -530,9 +530,9 @@ class HeartboundDatabase {
   // 1. Relationship Profile / Space Metadata
   subscribeSpaceInfo(onUpdate) {
     this.callbacks.space = onUpdate;
-    if (!this.isPaired()) return;
 
     if (this.isCloudMode()) {
+      if (!this.isPaired()) return; // Cloud mode requires a paired space ID
       const provider = this.getCloudProvider();
       if (provider === "firebase") {
         const spaceDocRef = doc(this.firestore, "spaces", this.activeSpaceId);
@@ -574,6 +574,7 @@ class HeartboundDatabase {
       const loadLocal = () => {
         const data = localStorage.getItem("hb_sandbox_profile");
         if (data) onUpdate(JSON.parse(data));
+        else onUpdate(null);
       };
       loadLocal();
       window.addEventListener("hb_local_profile_updated", loadLocal);

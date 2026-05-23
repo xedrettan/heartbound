@@ -144,6 +144,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 // --- CONNECTION STATUS HANDLER ---
 function handleConnectionStatusChange(status, spaceId) {
+  console.log("[HB] handleConnectionStatusChange:", status, spaceId || "");
   const badge = document.getElementById("connection-badge");
   const badgeText = document.getElementById("connection-status-text");
   
@@ -292,6 +293,7 @@ async function handleInviteRouting() {
 }
 
 function checkOnboarding(isCloud = false) {
+  console.log("[HB] checkOnboarding called. isCloud:", isCloud, "isLoggedOut:", isLoggedOut);
   // If user just logged out, always show onboarding
   if (isLoggedOut) {
     showOnboardingScreen();
@@ -319,6 +321,7 @@ function checkOnboarding(isCloud = false) {
 
 // Centralized function to show onboarding and reset UI to clean state
 function showOnboardingScreen() {
+  console.log("[HB] showOnboardingScreen called");
   const onboardingModal = document.getElementById("modal-onboarding");
   const formOnboarding = document.getElementById("form-onboarding");
   const panelJoinSpace = document.getElementById("panel-join-space");
@@ -365,14 +368,19 @@ async function performLogout() {
 
 // Setup listeners (for either Firestore or LocalStorage changes)
 function setupRealtimeSubscriptions() {
+  console.log("[HB] setupRealtimeSubscriptions called. isLoggedOut:", isLoggedOut);
   if (isLoggedOut) return;
 
   // 1. Profile / Milestone info
   db.subscribeSpaceInfo((profile) => {
     if (!profile) {
-      console.error("Space info missing. The database returned null. Security rules might be blocking access or the document failed to create.");
-      alert("Error: Space data could not be retrieved. Please check your Database Security Rules and Provider Configuration.");
-      // Stop the refresh loop by not calling performLogout() automatically
+      if (db.isCloudMode()) {
+        console.error("Space info missing in cloud mode. Security rules might be blocking access.");
+        alert("Error: Space data could not be retrieved. Please check your Database Security Rules and Provider Configuration.");
+      } else {
+        // In sandbox mode, no profile means not yet onboarded — ignore silently
+        console.warn("Sandbox: no profile yet, ignoring subscribeSpaceInfo callback.");
+      }
       return;
     }
     localSpaceData = profile;
@@ -1478,6 +1486,7 @@ function initSettingsAndForms() {
   if (formOnboardingSubmit) {
     formOnboardingSubmit.addEventListener("submit", async (e) => {
       e.preventDefault();
+      console.log("[HB] Onboarding form submitted. isCloudMode:", db.isCloudMode(), "isPaired:", db.isPaired());
       try {
       
       localStorage.setItem("hb_user_role", "partner1"); // Onboarding user is the creator (partner1)
@@ -1495,13 +1504,21 @@ function initSettingsAndForms() {
       if (onboardingModal) onboardingModal.classList.add("hidden");
       
       if (db.isCloudMode() && !db.isPaired()) {
+        console.log("[HB] Cloud mode: creating cloud space...");
         try {
           const generatedId = await db.createCloudSpace(profile);
-          handleConnectionStatusChange("paired", generatedId);
+          console.log("[HB] Cloud space created with ID:", generatedId);
+          // Note: createCloudSpace internally calls saveSpaceId -> triggerStatusChange -> handleConnectionStatusChange("paired")
+          // so we do NOT call handleConnectionStatusChange again here to avoid duplicate listener setup
         } catch (err) {
-          alert("Failed to initialize space database. Fallback to Local.");
+          console.error("[HB] Failed to create cloud space:", err);
+          alert("Failed to initialize cloud space (" + err.message + "). Saving locally instead.");
+          // Fallback: save locally and proceed
+          localStorage.setItem("hb_sandbox_profile", JSON.stringify(profile));
+          setupRealtimeSubscriptions();
         }
       } else {
+        console.log("[HB] Sandbox mode: saving profile locally and starting subscriptions.");
         // Local setup
         localStorage.setItem("hb_sandbox_profile", JSON.stringify(profile));
         setupRealtimeSubscriptions();
