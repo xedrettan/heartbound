@@ -209,6 +209,9 @@ class HeartboundDatabase {
       events: null
     };
 
+    // Platform-level config fetched from Firestore config/platform
+    this.platformConfig = null;
+
     // Load initial configs
     this.loadLocalConfig();
   }
@@ -246,6 +249,44 @@ class HeartboundDatabase {
       this.activeSpaceId = localStorage.getItem("hb_space_id");
     } catch (e) {
       console.error("Failed to load local config", e);
+    }
+  }
+
+  // Fetch platform-level configuration from Firestore (config/platform)
+  // Called by app.js after initConnection(). Non-blocking.
+  async loadPlatformConfig() {
+    if (!this.firestore) return null;
+    try {
+      const configRef = doc(this.firestore, "config", "platform");
+      const snap = await getDoc(configRef);
+      if (snap.exists()) {
+        this.platformConfig = snap.data();
+        console.log("[HB] Platform config loaded:", this.platformConfig);
+        return this.platformConfig;
+      }
+    } catch (e) {
+      console.warn("[HB] Could not load platform config:", e);
+    }
+    this.platformConfig = null;
+    return null;
+  }
+
+  // Write platform config to Firestore (admin use)
+  async savePlatformConfig(config) {
+    if (!this.firestore) throw new Error("No Firestore connection");
+    const configRef = doc(this.firestore, "config", "platform");
+    await setDoc(configRef, { ...config, updatedAt: serverTimestamp() }, { merge: true });
+    this.platformConfig = config;
+  }
+
+  // Count total spaces in the platform (admin use)
+  async getSpaceCount() {
+    if (!this.firestore) return 0;
+    try {
+      const spacesSnap = await getDocs(collection(this.firestore, "spaces"));
+      return spacesSnap.size;
+    } catch (e) {
+      return 0;
     }
   }
 

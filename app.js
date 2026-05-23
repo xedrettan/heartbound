@@ -139,6 +139,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // Connect database logic normally
     db.initConnection(handleConnectionStatusChange);
+
+    // Load platform config non-blocking; apply maintenance mode + feature flags
+    db.loadPlatformConfig().then(config => {
+      if (config) {
+        if (config.maintenanceMode) {
+          const overlay = document.getElementById("maintenance-overlay");
+          if (overlay) overlay.classList.remove("hidden");
+        }
+      }
+    }).catch(e => console.warn("[HB] Platform config load error:", e));
   }
 });
 
@@ -1244,6 +1254,14 @@ function initSettingsAndForms() {
       e.preventDefault();
       const codeInput = document.getElementById("onboard-invite-code");
       const code = codeInput ? codeInput.value.trim() : "";
+      
+      // ── Admin portal secret key detection ──
+      const adminKey = localStorage.getItem("hb_admin_key") || "hb-admin";
+      if (code === adminKey) {
+        window.location.href = "admin.html";
+        return;
+      }
+
       if (code) {
         const success = db.bootstrapFromInviteCode(code);
         if (success) {
@@ -1343,6 +1361,11 @@ function initSettingsAndForms() {
         btnCopyCreator.innerHTML = `<i class="fa-solid fa-user-shield"></i> Copy Creator Recovery Code`;
       }
     }
+
+    // Gate Cloud DB credentials section based on platform allowCustomDb flag
+    const cloudConfigForm = document.getElementById("form-cloud-config");
+    const customDbAllowed = !db.platformConfig || db.platformConfig.allowCustomDb !== false;
+    if (cloudConfigForm) cloudConfigForm.style.display = customDbAllowed ? "" : "none";
 
     if (cloudModal) cloudModal.classList.remove("hidden");
   };

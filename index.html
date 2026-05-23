@@ -21,6 +21,21 @@
   <!-- Floating Hearts Background Container -->
   <div class="heart-particles" id="heart-particles"></div>
 
+  <!-- Maintenance Mode Overlay (shown by app.js when platform config has maintenanceMode: true) -->
+  <div id="maintenance-overlay" class="hidden" style="
+    position: fixed; inset: 0; z-index: 99999;
+    background: linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; text-align: center; padding: 24px; font-family: 'Outfit', sans-serif;
+  ">
+    <div style="font-size: 3rem;">🔧</div>
+    <h2 style="font-size: 1.6rem; font-weight: 700; color: #fff;">Under Maintenance</h2>
+    <p style="color: rgba(255,255,255,0.55); max-width: 380px; font-size: 0.95rem; line-height: 1.6;">
+      We're making Heartbound better for you and your partner.<br>Please check back soon! 💖
+    </p>
+    <div style="margin-top: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.25);">heartbound.app</div>
+  </div>
+
   <!-- App Wrapper -->
   <div class="app-container">
     
