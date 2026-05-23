@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heartbound — Admin Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div id="admin-login-screen" class="screen">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-heart-pulse"></i>
+        </div>
+        <h1>Heartbound</h1>
+        <span class="admin-badge">Admin Portal</span>
+        <p class="login-subtitle">Platform management &amp; configuration</p>
+      </div>
+      <form id="form-admin-login">
+        <div class="form-group">
+          <label for="admin-password">Admin Password</label>
+          <div class="input-wrapper">
+            <i class="fa-solid fa-lock"></i>
+            <input type="password" id="admin-password" placeholder="Enter your admin password" required autocomplete="current-password">
+          </div>
+        </div>
+        <div id="login-error" class="error-msg hidden">
+          <i class="fa-solid fa-circle-exclamation"></i> Incorrect password. Please try again.
+        </div>
+        <button type="submit" class="btn-primary" id="btn-login">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          Access Portal
+        </button>
+      </form>
+      <a href="index.html" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i> Back to App
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== ADMIN DASHBOARD ===== -->
+  <div id="admin-dashboard" class="screen hidden">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <i class="fa-solid fa-heart-pulse brand-pulse"></i>
+        <div>
+          <h1>Heartbound</h1>
+          <span>Admin Portal</span>
+        </div>
+      </div>
+
+      <nav class="admin-nav">
+        <a href="#" class="nav-item active" data-section="overview">
+          <i class="fa-solid fa-gauge-high"></i>
+          Overview
+        </a>
+        <a href="#" class="nav-item" data-section="platform">
+          <i class="fa-solid fa-sliders"></i>
+          Platform Config
+        </a>
+        <a href="#" class="nav-item" data-section="database">
+          <i class="fa-solid fa-database"></i>
+          Database
+        </a>
+        <a href="#" class="nav-item" data-section="access">
+          <i class="fa-solid fa-shield-halved"></i>
+          Access Control
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="connection-indicator" id="connection-indicator">
+          <div class="indicator-dot" id="indicator-dot"></div>
+          <span id="connection-label">Connecting…</span>
+        </div>
+        <button class="btn-sidebar btn-logout" id="btn-admin-logout">
+          <i class="fa-solid fa-right-from-bracket"></i> Logout
+        </button>
+        <a href="index.html" class="btn-sidebar btn-back-app">
+          <i class="fa-solid fa-arrow-left"></i> Back to App
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-main">
+
+      <!-- ── OVERVIEW ── -->
+      <section id="section-overview" class="admin-section active">
+        <div class="section-header">
+          <h2>Platform Overview</h2>
+          <p>Real-time statistics and platform health</p>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-heart"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-total-spaces">—</div>
+              <div class="stat-label">Total Spaces</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-cloud"></i></div>
+            <div class="stat-info">
+              <div class="stat-value">Firebase</div>
+              <div class="stat-label">Platform Database</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-toggle-on"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-custom-db">—</div>
+              <div class="stat-label">Custom DB</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="stat-info">
+              <div class="stat-value" id="stat-platform-status">—</div>
+              <div class="stat-label">Platform Status</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <h3><i class="fa-solid fa-database"></i> Active Database Connection</h3>
+          <div class="db-info-grid">
+            <div class="db-info-item">
+              <span class="label">Provider</span>
+              <span class="value" id="info-provider">—</span>
+            </div>
+            <div class="db-info-item">
+              <span class="label">Project ID</span>
+              <span class="value" id="info-project-id">—</span>
+            </div>
+            <div class="db-info-item">
+              <span class="label">Status</span>
+              <span class="value" id="info-connection">—</span>
+            </div>
+            <div class="db-info-item">
+              <span class="label">Last Config Update</span>
+              <span class="value" id="info-last-update">—</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── PLATFORM CONFIG ── -->
+      <section id="section-platform" class="admin-section hidden">
+        <div class="section-header">
+          <h2>Platform Configuration</h2>
+          <p>Control global behavior for all users on the platform</p>
+        </div>
+
+        <div class="config-card">
+          <div class="config-item">
+            <div class="config-info">
+              <h4>Platform Name</h4>
+              <p>The display name of the platform (cosmetic only)</p>
+            </div>
+            <input type="text" id="input-platform-name" class="config-input" value="Heartbound" placeholder="Platform name">
+          </div>
+
+          <div class="config-item">
+            <div class="config-info">
+              <h4>Allow Custom Database</h4>
+              <p>Let users connect their own Firebase or Supabase instance. When disabled, users cannot change the database in Cloud Sync Settings.</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-allow-custom-db" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="config-item">
+            <div class="config-info">
+              <h4>Maintenance Mode</h4>
+              <p>Display a maintenance notice to all users visiting the app. The app will be non-functional until disabled.</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="toggle-maintenance-mode">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="config-actions">
+            <button class="btn-primary" id="btn-save-platform-config">
+              <i class="fa-solid fa-floppy-disk"></i>
+              Save Configuration
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── DATABASE ── -->
+      <section id="section-database" class="admin-section hidden">
+        <div class="section-header">
+          <h2>Platform Database</h2>
+          <p>The default database used by all user spaces</p>
+        </div>
+
+        <div class="info-banner">
+          <i class="fa-solid fa-circle-info"></i>
+          <div>
+            <strong>How Platform Database Works</strong>
+            <p>The platform database credentials are embedded in <code>database.js</code>. All users' spaces are stored in this project unless they opt in to their own DB. To change the platform database, update the credentials in the source code and redeploy.</p>
+          </div>
+        </div>
+
+        <div class="config-card">
+          <h3><i class="fa-solid fa-server"></i> Active Configuration</h3>
+          <div class="db-details" id="db-active-config">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="config-card" style="margin-top:20px;">
+          <h3><i class="fa-solid fa-scroll"></i> Recommended Firestore Security Rules</h3>
+          <p class="card-desc">Apply these rules in your <a href="https://console.firebase.google.com" target="_blank" class="text-link">Firebase Console</a> → Firestore → Rules to allow the admin portal to write platform configuration:</p>
+          <pre class="code-block">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User spaces — read/write open (Phase 1)
+    match /spaces/{spaceId} {
+      allow read, write: if true;
+    }
+    // Platform config — readable by all, writable by all (Phase 1)
+    match /config/{document} {
+      allow read, write: if true;
+    }
+    // Subcollections (loves/hates, memories, events)
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+        </div>
+      </section>
+
+      <!-- ── ACCESS CONTROL ── -->
+      <section id="section-access" class="admin-section hidden">
+        <div class="section-header">
+          <h2>Access Control</h2>
+          <p>Manage the secret key and admin password</p>
+        </div>
+
+        <div class="config-card">
+          <h3><i class="fa-solid fa-key"></i> Admin Secret Key</h3>
+          <p class="card-desc">Type this in the "Join Partner" tab on the onboarding screen to access the admin portal. Keep it private.</p>
+          <div class="form-group">
+            <label>Secret Key</label>
+            <div class="input-row">
+              <input type="text" id="input-admin-key" class="config-input" placeholder="hb-admin">
+              <button class="btn-secondary" id="btn-save-admin-key">
+                <i class="fa-solid fa-floppy-disk"></i> Save
+              </button>
+            </div>
+            <p class="field-hint">Default: <code>hb-admin</code></p>
+          </div>
+        </div>
+
+        <div class="config-card" style="margin-top:20px;">
+          <h3><i class="fa-solid fa-lock"></i> Admin Password</h3>
+          <p class="card-desc">Password required after entering the secret key. Stored as a SHA-256 hash in your browser's localStorage.</p>
+          <div class="form-group">
+            <label for="input-new-password">New Password</label>
+            <input type="password" id="input-new-password" class="config-input full-width" placeholder="Enter new password (min 8 chars)">
+          </div>
+          <div class="form-group" style="margin-top:12px;">
+            <label for="input-confirm-password">Confirm Password</label>
+            <input type="password" id="input-confirm-password" class="config-input full-width" placeholder="Re-enter new password">
+          </div>
+          <div style="margin-top:16px;">
+            <button class="btn-primary" id="btn-save-password" style="width:auto;">
+              <i class="fa-solid fa-key"></i> Update Password
+            </button>
+          </div>
+          <p class="field-hint" style="margin-top:12px;">Default password: <code>heartbound-admin-2025</code></p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="admin-toast" class="admin-toast hidden">
+    <i class="fa-solid fa-circle-check" id="toast-icon"></i>
+    <span id="toast-message">Saved!</span>
+  </div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

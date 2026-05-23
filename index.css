@@ -1717,13 +1717,14 @@ button, input, select, textarea {
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .app-container {
     flex-direction: column;
     min-height: 100dvh;
   }
   .sidebar {
     position: fixed;
+    top: auto;
     bottom: 0;
     left: 0;
     width: 100%;
@@ -1814,6 +1815,19 @@ button, input, select, textarea {
   }
   .modal-overlay {
     padding: 10px;
+  }
+
+  /* Automatically minimize empty columns to save screen height on mobile */
+  .adventures-column.minimized {
+    min-height: auto !important;
+    padding-bottom: 12px;
+  }
+  .adventures-column.minimized .column-header {
+    margin-bottom: 0 !important;
+  }
+  .adventures-column.minimized .adventures-list,
+  .adventures-column.minimized .empty-column-state {
+    display: none !important;
   }
 }
 

@@ -139,11 +139,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     
     // Connect database logic normally
     db.initConnection(handleConnectionStatusChange);
+
+    // Load platform config non-blocking; apply maintenance mode + feature flags
+    db.loadPlatformConfig().then(config => {
+      if (config) {
+        if (config.maintenanceMode) {
+          const overlay = document.getElementById("maintenance-overlay");
+          if (overlay) overlay.classList.remove("hidden");
+        }
+      }
+    }).catch(e => console.warn("[HB] Platform config load error:", e));
   }
 });
 
 // --- CONNECTION STATUS HANDLER ---
 function handleConnectionStatusChange(status, spaceId) {
+  console.log("[HB] handleConnectionStatusChange:", status, spaceId || "");
   const badge = document.getElementById("connection-badge");
   const badgeText = document.getElementById("connection-status-text");
   
@@ -292,6 +303,7 @@ async function handleInviteRouting() {
 }
 
 function checkOnboarding(isCloud = false) {
+  console.log("[HB] checkOnboarding called. isCloud:", isCloud, "isLoggedOut:", isLoggedOut);
   // If user just logged out, always show onboarding
   if (isLoggedOut) {
     showOnboardingScreen();
@@ -319,6 +331,7 @@ function checkOnboarding(isCloud = false) {
 
 // Centralized function to show onboarding and reset UI to clean state
 function showOnboardingScreen() {
+  console.log("[HB] showOnboardingScreen called");
   const onboardingModal = document.getElementById("modal-onboarding");
   const formOnboarding = document.getElementById("form-onboarding");
   const panelJoinSpace = document.getElementById("panel-join-space");
@@ -365,11 +378,21 @@ async function performLogout() {
 
 // Setup listeners (for either Firestore or LocalStorage changes)
 function setupRealtimeSubscriptions() {
-  // Clear logout guard when user successfully logs back in
-  isLoggedOut = false;
-  
+  console.log("[HB] setupRealtimeSubscriptions called. isLoggedOut:", isLoggedOut);
+  if (isLoggedOut) return;
+
   // 1. Profile / Milestone info
   db.subscribeSpaceInfo((profile) => {
+    if (!profile) {
+      if (db.isCloudMode()) {
+        console.error("Space info missing in cloud mode. Security rules might be blocking access.");
+        alert("Error: Space data could not be retrieved. Please check your Database Security Rules and Provider Configuration.");
+      } else {
+        // In sandbox mode, no profile means not yet onboarded — ignore silently
+        console.warn("Sandbox: no profile yet, ignoring subscribeSpaceInfo callback.");
+      }
+      return;
+    }
     localSpaceData = profile;
     updateProfileUI();
     updateCountdownUI();
@@ -932,6 +955,18 @@ function renderEvents() {
     else tEmpty.classList.add("hidden");
   }
 
+  // Automatically minimize empty columns (collapses their height on mobile view)
+  const colCel = document.getElementById("col-celebrations");
+  const colTrips = document.getElementById("col-trips");
+  if (colCel) {
+    if (celebrations.length === 0) colCel.classList.add("minimized");
+    else colCel.classList.remove("minimized");
+  }
+  if (colTrips) {
+    if (trips.length === 0) colTrips.classList.add("minimized");
+    else colTrips.classList.remove("minimized");
+  }
+
   // Render celebrations
   celebrations.forEach(cel => {
     const card = document.createElement("div");
@@ -999,6 +1034,7 @@ function renderEvents() {
       </div>
     `;
 
+    cList.appendChild(card);
     renderChecklistItems(cel, `checklist-items-${cel.id}`);
 
     // Checklist add step submit event
@@ -1019,8 +1055,6 @@ function renderEvents() {
         db.deleteEvent(cel.id);
       }
     });
-
-    cList.appendChild(card);
   });
 
   // Render trips
@@ -1068,6 +1102,7 @@ function renderEvents() {
       </div>
     `;
 
+    tList.appendChild(card);
     renderChecklistItems(trip, `checklist-items-${trip.id}`);
 
     // Checklist add step submit event
@@ -1088,8 +1123,6 @@ function renderEvents() {
         db.deleteEvent(trip.id);
       }
     });
-
-    tList.appendChild(card);
   });
 }
 
@@ -1231,6 +1264,14 @@ function initSettingsAndForms() {
       e.preventDefault();
       const codeInput = document.getElementById("onboard-invite-code");
       const code = codeInput ? codeInput.value.trim() : "";
+      
+      // ── Admin portal secret key detection ──
+      const adminKey = localStorage.getItem("hb_admin_key") || "hb-admin";
+      if (code === adminKey) {
+        window.location.href = "admin.html";
+        return;
+      }
+
       if (code) {
         const success = db.bootstrapFromInviteCode(code);
         if (success) {
@@ -1288,7 +1329,19 @@ function initSettingsAndForms() {
 
   const openSyncModal = () => {
     const providerSelect = document.getElementById("db-provider");
-    if (db.dbConfig) {
+    const cloudConfigForm = document.getElementById("form-cloud-config");
+    const defaultDbBanner = document.getElementById("default-db-status");
+    const customDbAllowed = !db.platformConfig || db.platformConfig.allowCustomDb !== false;
+    
+    // Determine if using default platform DB or sandbox (checking projectId)
+    const isUsingDefaultDb = db.dbConfig && (
+      db.dbConfig.projectId === "heartbound-fb84e" || 
+      db.dbConfig.projectId === "heartbound-dev" || 
+      !db.dbConfig.projectId
+    );
+
+    if (db.dbConfig && !isUsingDefaultDb) {
+      // ONLY populate fields if it's a true custom DB
       const provider = db.dbConfig.provider || "firebase";
       if (providerSelect) providerSelect.value = provider;
       toggleDbInputs(provider);
@@ -1307,8 +1360,15 @@ function initSettingsAndForms() {
         if (sbKey) sbKey.value = db.dbConfig.supabaseKey || "";
       }
     } else {
+      // Clear fields for default / sandbox
       if (providerSelect) providerSelect.value = "firebase";
       toggleDbInputs("firebase");
+      const apiKey = document.getElementById("db-apikey");
+      const projectId = document.getElementById("db-projectid");
+      const appId = document.getElementById("db-appid");
+      if (apiKey) apiKey.value = "";
+      if (projectId) projectId.value = "";
+      if (appId) appId.value = "";
     }
     
     // Dynamically update copy buttons labels based on the active session role
@@ -1329,6 +1389,29 @@ function initSettingsAndForms() {
       } else {
         btnCopyCreator.innerHTML = `<i class="fa-solid fa-user-shield"></i> Copy Creator Recovery Code`;
       }
+    }
+
+    if (cloudConfigForm) {
+      if (!customDbAllowed) {
+        cloudConfigForm.style.display = "none";
+      } else if (isUsingDefaultDb) {
+        cloudConfigForm.classList.add("hidden");
+        if (defaultDbBanner) defaultDbBanner.classList.remove("hidden");
+      } else {
+        cloudConfigForm.classList.remove("hidden");
+        if (defaultDbBanner) defaultDbBanner.classList.add("hidden");
+      }
+    }
+    
+    // Wire up the button to show the custom form manually
+    const btnShowCustom = document.getElementById("btn-show-custom-db");
+    if (btnShowCustom) {
+      btnShowCustom.onclick = () => {
+        if (defaultDbBanner) defaultDbBanner.classList.add("hidden");
+        if (cloudConfigForm) {
+          cloudConfigForm.classList.remove("hidden");
+        }
+      };
     }
 
     if (cloudModal) cloudModal.classList.remove("hidden");
@@ -1473,6 +1556,8 @@ function initSettingsAndForms() {
   if (formOnboardingSubmit) {
     formOnboardingSubmit.addEventListener("submit", async (e) => {
       e.preventDefault();
+      console.log("[HB] Onboarding form submitted. isCloudMode:", db.isCloudMode(), "isPaired:", db.isPaired());
+      try {
       
       localStorage.setItem("hb_user_role", "partner1"); // Onboarding user is the creator (partner1)
       
@@ -1489,16 +1574,28 @@ function initSettingsAndForms() {
       if (onboardingModal) onboardingModal.classList.add("hidden");
       
       if (db.isCloudMode() && !db.isPaired()) {
+        console.log("[HB] Cloud mode: creating cloud space...");
         try {
           const generatedId = await db.createCloudSpace(profile);
-          handleConnectionStatusChange("paired", generatedId);
+          console.log("[HB] Cloud space created with ID:", generatedId);
+          // Note: createCloudSpace internally calls saveSpaceId -> triggerStatusChange -> handleConnectionStatusChange("paired")
+          // so we do NOT call handleConnectionStatusChange again here to avoid duplicate listener setup
         } catch (err) {
-          alert("Failed to initialize space database. Fallback to Local.");
+          console.error("[HB] Failed to create cloud space:", err);
+          alert("Failed to initialize cloud space (" + err.message + "). Saving locally instead.");
+          // Fallback: save locally and proceed
+          localStorage.setItem("hb_sandbox_profile", JSON.stringify(profile));
+          setupRealtimeSubscriptions();
         }
       } else {
+        console.log("[HB] Sandbox mode: saving profile locally and starting subscriptions.");
         // Local setup
         localStorage.setItem("hb_sandbox_profile", JSON.stringify(profile));
         setupRealtimeSubscriptions();
+      }
+      } catch (err) {
+        console.error("Fatal error during onboarding submission:", err);
+        alert("An error occurred during onboarding: " + err.message);
       }
     });
   }

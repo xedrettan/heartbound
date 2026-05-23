@@ -21,6 +21,21 @@
   <!-- Floating Hearts Background Container -->
   <div class="heart-particles" id="heart-particles"></div>
 
+  <!-- Maintenance Mode Overlay (shown by app.js when platform config has maintenanceMode: true) -->
+  <div id="maintenance-overlay" class="hidden" style="
+    position: fixed; inset: 0; z-index: 99999;
+    background: linear-gradient(135deg, #0d0d1a 0%, #1a0a2e 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; text-align: center; padding: 24px; font-family: 'Outfit', sans-serif;
+  ">
+    <div style="font-size: 3rem;">🔧</div>
+    <h2 style="font-size: 1.6rem; font-weight: 700; color: #fff;">Under Maintenance</h2>
+    <p style="color: rgba(255,255,255,0.55); max-width: 380px; font-size: 0.95rem; line-height: 1.6;">
+      We're making Heartbound better for you and your partner.<br>Please check back soon! 💖
+    </p>
+    <div style="margin-top: 8px; font-size: 0.78rem; color: rgba(255,255,255,0.25);">heartbound.app</div>
+  </div>
+
   <!-- App Wrapper -->
   <div class="app-container">
     
@@ -245,10 +260,8 @@
 
       <!-- VIEW: Adventures (Trips & Celebrations) -->
       <section id="view-adventures" class="app-view">
-        <div class="adventures-split">
-          
-          <!-- Column 1: Celebrations & Milestones -->
-          <div class="adventures-column glass-card">
+        <div class="adventures-split">          <!-- Column 1: Celebrations & Milestones -->
+          <div class="adventures-column glass-card" id="col-celebrations">
             <div class="column-header">
               <h3><i class="fa-solid fa-cake-candles icon-rose"></i> Celebrations & Milestones</h3>
               <button class="btn-circle-add" id="btn-add-celebration" title="Add Celebration">
@@ -262,9 +275,9 @@
               <p>No upcoming celebrations yet. Plan their birthday or an anniversary milestone!</p>
             </div>
           </div>
-
+ 
           <!-- Column 2: Adventures & Trips -->
-          <div class="adventures-column glass-card">
+          <div class="adventures-column glass-card" id="col-trips">
             <div class="column-header">
               <h3><i class="fa-solid fa-earth-americas icon-teal"></i> Adventures & Trips</h3>
               <button class="btn-circle-add" id="btn-add-trip" title="Plan a Trip">
@@ -306,7 +319,7 @@
         </button>
       </div>
 
-      <form id="form-onboarding" class="modal-form">
+      <form id="form-onboarding" class="modal-form" onsubmit="event.preventDefault(); return false;">
         <div class="form-row-split">
           <div class="form-group">
             <label for="onboard-user-name">Your Name</label>
@@ -393,7 +406,18 @@
           By pasting your Firebase credentials below, you can activate the shared mode and link devices with your significant other!
         </p>
 
-        <!-- Firestore Configuration Settings Form -->
+        <!-- Default DB Banner -->
+        <div id="default-db-status" class="info-banner hidden" style="margin-bottom: 20px;">
+          <i class="fa-solid fa-cloud-check icon-rose" style="font-size: 1.2rem;"></i>
+          <div>
+            <strong style="color: #fff; font-size: 0.95rem;">Using Default Platform Database</strong>
+            <p style="color: rgba(255,255,255,0.65); font-size: 0.85rem; margin-top: 4px;">
+              Your space is hosted on the secure Heartbound cloud. No configuration needed!
+            </p>
+          </div>
+          <button type="button" class="btn-secondary" id="btn-show-custom-db" style="margin-top: 12px; font-size: 0.8rem; padding: 6px 12px;">Setup Custom Database instead</button>
+        </div>
+
         <!-- Cloud Database Configuration Settings Form -->
         <form id="form-cloud-config" class="modal-form">
           <div class="form-group">
