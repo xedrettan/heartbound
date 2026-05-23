@@ -1816,6 +1816,15 @@ button, input, select, textarea {
   .modal-overlay {
     padding: 10px;
   }
+
+  /* Automatically minimize empty columns to save screen height on mobile */
+  .adventures-column.minimized {
+    padding-bottom: 12px;
+  }
+  .adventures-column.minimized .adventures-list,
+  .adventures-column.minimized .empty-column-state {
+    display: none !important;
+  }
 }
 
 .onboarding-hero-img {

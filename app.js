@@ -955,6 +955,18 @@ function renderEvents() {
     else tEmpty.classList.add("hidden");
   }
 
+  // Automatically minimize empty columns (collapses their height on mobile view)
+  const colCel = document.getElementById("col-celebrations");
+  const colTrips = document.getElementById("col-trips");
+  if (colCel) {
+    if (celebrations.length === 0) colCel.classList.add("minimized");
+    else colCel.classList.remove("minimized");
+  }
+  if (colTrips) {
+    if (trips.length === 0) colTrips.classList.add("minimized");
+    else colTrips.classList.remove("minimized");
+  }
+
   // Render celebrations
   celebrations.forEach(cel => {
     const card = document.createElement("div");
