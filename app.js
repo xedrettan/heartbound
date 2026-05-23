@@ -1022,6 +1022,7 @@ function renderEvents() {
       </div>
     `;
 
+    cList.appendChild(card);
     renderChecklistItems(cel, `checklist-items-${cel.id}`);
 
     // Checklist add step submit event
@@ -1042,8 +1043,6 @@ function renderEvents() {
         db.deleteEvent(cel.id);
       }
     });
-
-    cList.appendChild(card);
   });
 
   // Render trips
@@ -1091,6 +1090,7 @@ function renderEvents() {
       </div>
     `;
 
+    tList.appendChild(card);
     renderChecklistItems(trip, `checklist-items-${trip.id}`);
 
     // Checklist add step submit event
@@ -1111,8 +1111,6 @@ function renderEvents() {
         db.deleteEvent(trip.id);
       }
     });
-
-    tList.appendChild(card);
   });
 }
 
