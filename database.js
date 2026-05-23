@@ -1,6 +1,6 @@
 /* Heartbound Database abstraction layer - Multi-Cloud (LocalStorage, Firebase & Supabase) */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
   getFirestore, 
   doc, 
@@ -270,12 +270,8 @@ class HeartboundDatabase {
           appId: "1:1057660034330:web:e30c2c4338247d8de220a3"
         };
         
-        // Dynamically import helpers to prevent duplicate setup collisions
-        const { getApps, initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
-        const { getFirestore } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
-        
         const apps = getApps();
-        const tempApp = apps.length > 0 ? apps[0] : initializeApp(bootstrapConfig);
+        const tempApp = apps.find(app => app.name === "heartbound-platform") || initializeApp(bootstrapConfig, "heartbound-platform");
         targetFirestore = getFirestore(tempApp);
       } catch (e) {
         console.warn("[HB] Failed to bootstrap platform config connection:", e);
@@ -328,7 +324,6 @@ class HeartboundDatabase {
     this.unsubscribeAll();
     if (this.firebaseApp) {
       try {
-        const { deleteApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
         await deleteApp(this.firebaseApp);
         console.log("Firebase App destroyed successfully.");
       } catch (e) {
@@ -1182,7 +1177,54 @@ class HeartboundDatabase {
       let events = JSON.parse(localStorage.getItem("hb_sandbox_events")) || [];
       events = events.filter(item => item.id !== id);
       localStorage.setItem("hb_sandbox_events", JSON.stringify(events));
-      window.dispatchEvent(new Event("hb_local_events_updated"));
+    }
+  }
+
+  async updateEvent(id, evt) {
+    if (this.isCloudMode() && this.isPaired()) {
+      const provider = this.getCloudProvider();
+      if (provider === "firebase") {
+        const payload = {
+          title: evt.title,
+          date: evt.date,
+          notes: evt.notes
+        };
+        if (evt.targetRole) {
+          payload.targetRole = evt.targetRole;
+        }
+        const docRef = doc(this.firestore, "spaces", this.activeSpaceId, "celebrations", id);
+        await updateDoc(docRef, payload);
+        await this.refreshEvents();
+      } else if (provider === "supabase") {
+        const payload = {
+          title: evt.title,
+          date: evt.date,
+          notes: evt.notes
+        };
+        if (evt.targetRole) {
+          payload.target_role = evt.targetRole;
+        }
+        const { error } = await this.supabaseClient
+          .from("celebrations")
+          .update(payload)
+          .eq("id", id);
+        if (error) throw error;
+        await this.refreshEvents();
+      }
+    } else {
+      // Local
+      const events = JSON.parse(localStorage.getItem("hb_sandbox_events")) || [];
+      const index = events.findIndex(e => e.id === id);
+      if (index !== -1) {
+        events[index].title = evt.title;
+        events[index].date = evt.date;
+        events[index].notes = evt.notes;
+        if (evt.targetRole) {
+          events[index].targetRole = evt.targetRole;
+        }
+        localStorage.setItem("hb_sandbox_events", JSON.stringify(events));
+        window.dispatchEvent(new Event("hb_local_events_updated"));
+      }
     }
   }
 

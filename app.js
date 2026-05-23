@@ -1011,8 +1011,9 @@ function renderEvents() {
           </div>
           <p><i class="fa-solid fa-cake-candles"></i> ${formattedDate}</p>
         </div>
-        <div class="adv-action-row">
-          <button class="adv-delete-btn" data-id="${cel.id}"><i class="fa-solid fa-trash"></i></button>
+        <div class="adv-action-row" style="display: flex; gap: 8px;">
+          <button class="adv-edit-btn" data-id="${cel.id}" title="Edit Celebration Details"><i class="fa-solid fa-pencil"></i></button>
+          <button class="adv-delete-btn" data-id="${cel.id}" title="Remove Celebration"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
       <p class="adv-desc">${displayNotes}</p>
@@ -1050,6 +1051,10 @@ function renderEvents() {
       }
     });
 
+    card.querySelector(".adv-edit-btn").addEventListener("click", () => {
+      openEditCelebration(cel);
+    });
+
     card.querySelector(".adv-delete-btn").addEventListener("click", () => {
       if (confirm(`Remove this celebration: "${cel.title}"?`)) {
         db.deleteEvent(cel.id);
@@ -1079,8 +1084,9 @@ function renderEvents() {
           <h4>Trip to ${displayTitle}</h4>
           <p><i class="fa-solid fa-compass"></i> Departure: ${formattedDate}</p>
         </div>
-        <div class="adv-action-row">
-          <button class="adv-delete-btn" data-id="${trip.id}"><i class="fa-solid fa-trash"></i></button>
+        <div class="adv-action-row" style="display: flex; gap: 8px;">
+          <button class="adv-edit-btn" data-id="${trip.id}" title="Edit Trip Details"><i class="fa-solid fa-pencil"></i></button>
+          <button class="adv-delete-btn" data-id="${trip.id}" title="Cancel Trip"><i class="fa-solid fa-trash"></i></button>
         </div>
       </div>
       <p class="adv-desc">${displayNotes}</p>
@@ -1118,6 +1124,10 @@ function renderEvents() {
       }
     });
 
+    card.querySelector(".adv-edit-btn").addEventListener("click", () => {
+      openEditTrip(trip);
+    });
+
     card.querySelector(".adv-delete-btn").addEventListener("click", () => {
       if (confirm(`Cancel this trip: "${trip.title}"?`)) {
         db.deleteEvent(trip.id);
@@ -1143,8 +1153,13 @@ function renderChecklistItems(evt, elementId) {
     const row = document.createElement("div");
     row.className = `checklist-item ${item.done ? 'done' : ''}`;
     row.innerHTML = `
-      <input type="checkbox" ${item.done ? 'checked' : ''}>
-      <span>${item.text}</span>
+      <div class="checklist-item-left">
+        <input type="checkbox" ${item.done ? 'checked' : ''}>
+        <span>${item.text}</span>
+      </div>
+      <button class="checklist-item-del-btn" title="Delete Item">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
     `;
 
     // Toggle check checkbox state
@@ -1153,8 +1168,41 @@ function renderChecklistItems(evt, elementId) {
       db.updateEventChecklist(evt.id, list);
     });
 
+    // Delete item click handler
+    row.querySelector(".checklist-item-del-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (confirm(`Remove item: "${item.text}"?`)) {
+        const newList = list.filter((_, idx) => idx !== index);
+        db.updateEventChecklist(evt.id, newList);
+      }
+    });
+
     container.appendChild(row);
   });
+}
+
+function openEditCelebration(cel) {
+  document.getElementById("cel-id").value = cel.id;
+  document.getElementById("cel-title").value = cel.title || "";
+  document.getElementById("cel-date").value = cel.date || "";
+  document.getElementById("cel-notes").value = cel.notes || "";
+  
+  populateTargetOptions("cel-target", cel.targetRole || "partner2");
+  
+  document.getElementById("cel-modal-title").innerText = "Edit Celebration Details";
+  document.getElementById("btn-submit-celebration").innerText = "Save Celebration Details 🎂";
+  document.getElementById("modal-celebration").classList.remove("hidden");
+}
+
+function openEditTrip(trip) {
+  document.getElementById("trip-id").value = trip.id;
+  document.getElementById("trip-title").value = trip.title || "";
+  document.getElementById("trip-date").value = trip.date || "";
+  document.getElementById("trip-notes").value = trip.notes || "";
+  
+  document.getElementById("trip-modal-title").innerText = "Edit Trip Details";
+  document.getElementById("btn-submit-trip").innerText = "Save Trip Details ✈️";
+  document.getElementById("modal-trip").classList.remove("hidden");
 }
 
 // --- SETUP MODAL CONTROLS & SUBMIT HANDLERS ---
@@ -1494,6 +1542,15 @@ function initSettingsAndForms() {
     btnAddCelebration.addEventListener("click", () => {
       const formCel = document.getElementById("form-celebration");
       if (formCel) formCel.reset();
+      
+      const celId = document.getElementById("cel-id");
+      if (celId) celId.value = "";
+      
+      const celTitle = document.getElementById("cel-modal-title");
+      if (celTitle) celTitle.innerText = "Add Upcoming Celebration";
+      
+      const btnSubmitCel = document.getElementById("btn-submit-celebration");
+      if (btnSubmitCel) btnSubmitCel.innerText = "Add to Calendar 🎂";
 
       populateTargetOptions("cel-target");
 
@@ -1506,6 +1563,16 @@ function initSettingsAndForms() {
     btnAddTrip.addEventListener("click", () => {
       const formT = document.getElementById("form-trip");
       if (formT) formT.reset();
+      
+      const tripId = document.getElementById("trip-id");
+      if (tripId) tripId.value = "";
+      
+      const tripTitle = document.getElementById("trip-modal-title");
+      if (tripTitle) tripTitle.innerText = "Plan a Trip / Adventure";
+      
+      const btnSubmitT = document.getElementById("btn-submit-trip");
+      if (btnSubmitT) btnSubmitT.innerText = "Let's Adventure! ✈️";
+
       if (tripModal) tripModal.classList.remove("hidden");
     });
   }
@@ -1685,42 +1752,58 @@ function initSettingsAndForms() {
     });
   }
 
-  // 5. Add Celebration Birthday event
+  // 5. Add/Edit Celebration Birthday event
   const formCelebrationSubmit = document.getElementById("form-celebration");
   if (formCelebrationSubmit) {
     formCelebrationSubmit.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const id = document.getElementById("cel-id").value;
       const targetEl = document.getElementById("cel-target");
       const payload = {
         type: "birthday",
         title: document.getElementById("cel-title").value.trim(),
         date: document.getElementById("cel-date").value,
         notes: document.getElementById("cel-notes").value.trim(),
-        targetRole: targetEl ? targetEl.value : "partner2",
-        checklist: []
+        targetRole: targetEl ? targetEl.value : "partner2"
       };
 
-      await db.addEvent(payload);
+      if (id) {
+        // Edit existing celebration
+        await db.updateEvent(id, payload);
+      } else {
+        // Add new celebration
+        payload.checklist = [];
+        await db.addEvent(payload);
+      }
+
       if (celModal) celModal.classList.add("hidden");
       // Safety-net: delayed full re-fetch in case primary refresh was missed
       setTimeout(() => db.forceRefreshAll(), 400);
     });
   }
 
-  // 6. Add Trip Adventure event
+  // 6. Add/Edit Trip Adventure event
   const formTripSubmit = document.getElementById("form-trip");
   if (formTripSubmit) {
     formTripSubmit.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const id = document.getElementById("trip-id").value;
       const payload = {
         type: "trip",
         title: document.getElementById("trip-title").value.trim(),
         date: document.getElementById("trip-date").value,
-        notes: document.getElementById("trip-notes").value.trim(),
-        checklist: []
+        notes: document.getElementById("trip-notes").value.trim()
       };
 
-      await db.addEvent(payload);
+      if (id) {
+        // Edit existing trip
+        await db.updateEvent(id, payload);
+      } else {
+        // Add new trip
+        payload.checklist = [];
+        await db.addEvent(payload);
+      }
+
       if (tripModal) tripModal.classList.add("hidden");
       // Safety-net: delayed full re-fetch in case primary refresh was missed
       setTimeout(() => db.forceRefreshAll(), 400);

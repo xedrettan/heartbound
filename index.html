@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="index.css?v=19">
+  <link rel="stylesheet" href="index.css?v=30">
 </head>
 <body>
 
@@ -607,10 +607,11 @@
   <div class="modal-overlay hidden" id="modal-celebration">
     <div class="glass-modal form-modal">
       <div class="modal-header">
-        <h3>Add Upcoming Celebration</h3>
+        <h3 id="cel-modal-title">Add Upcoming Celebration</h3>
         <button class="btn-modal-close" data-close="celebration"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="form-celebration" class="modal-form">
+        <input type="hidden" id="cel-id" value="">
         <div class="form-group">
           <label for="cel-title">Celebration Title</label>
           <input type="text" id="cel-title" placeholder="e.g., alex's 25th birthday, 2 year anniversary" required>
@@ -634,7 +635,7 @@
           <textarea id="cel-notes" placeholder="e.g., Book dinner at that French restaurant they loved. Buy them that bag they tagged on Instagram." rows="3"></textarea>
         </div>
 
-        <button type="submit" class="btn-primary btn-block">Add to Calendar 🎂</button>
+        <button type="submit" id="btn-submit-celebration" class="btn-primary btn-block">Add to Calendar 🎂</button>
       </form>
     </div>
   </div>
@@ -643,10 +644,11 @@
   <div class="modal-overlay hidden" id="modal-trip">
     <div class="glass-modal form-modal">
       <div class="modal-header">
-        <h3>Plan a Trip / Adventure</h3>
+        <h3 id="trip-modal-title">Plan a Trip / Adventure</h3>
         <button class="btn-modal-close" data-close="trip"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="form-trip" class="modal-form">
+        <input type="hidden" id="trip-id" value="">
         <div class="form-group">
           <label for="trip-title">Where are we going?</label>
           <input type="text" id="trip-title" placeholder="e.g., Summer Trip to Tokyo, Weekend in cabin" required>
@@ -662,7 +664,7 @@
           <textarea id="trip-notes" placeholder="e.g., Flight departure at 10 AM. Staying at the Shinjuku hotel. Things to eat: Ramen, Sushi, Okonomiyaki." rows="3"></textarea>
         </div>
 
-        <button type="submit" class="btn-primary btn-block">Let's Adventure! ✈️</button>
+        <button type="submit" id="btn-submit-trip" class="btn-primary btn-block">Let's Adventure! ✈️</button>
       </form>
     </div>
   </div>
@@ -722,7 +724,7 @@
   <!-- Core App Libraries -->
   <!-- We load Firebase JS SDK modularly or globally via web scripts. 
        Using the CDN modules below ensures we have everything needed. -->
-  <script src="database.js?v=20" type="module"></script>
-  <script src="app.js?v=20" type="module"></script>
+  <script src="database.js?v=30" type="module"></script>
+  <script src="app.js?v=30" type="module"></script>
 </body>
 </html>
