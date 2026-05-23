@@ -365,11 +365,16 @@ async function performLogout() {
 
 // Setup listeners (for either Firestore or LocalStorage changes)
 function setupRealtimeSubscriptions() {
-  // Clear logout guard when user successfully logs back in
-  isLoggedOut = false;
-  
+  if (isLoggedOut) return;
+
   // 1. Profile / Milestone info
   db.subscribeSpaceInfo((profile) => {
+    if (!profile) {
+      console.error("Space info missing. The database returned null. Security rules might be blocking access or the document failed to create.");
+      alert("Error: Space data could not be retrieved. Please check your Database Security Rules and Provider Configuration.");
+      // Stop the refresh loop by not calling performLogout() automatically
+      return;
+    }
     localSpaceData = profile;
     updateProfileUI();
     updateCountdownUI();
@@ -1473,6 +1478,7 @@ function initSettingsAndForms() {
   if (formOnboardingSubmit) {
     formOnboardingSubmit.addEventListener("submit", async (e) => {
       e.preventDefault();
+      try {
       
       localStorage.setItem("hb_user_role", "partner1"); // Onboarding user is the creator (partner1)
       
@@ -1499,6 +1505,10 @@ function initSettingsAndForms() {
         // Local setup
         localStorage.setItem("hb_sandbox_profile", JSON.stringify(profile));
         setupRealtimeSubscriptions();
+      }
+      } catch (err) {
+        console.error("Fatal error during onboarding submission:", err);
+        alert("An error occurred during onboarding: " + err.message);
       }
     });
   }
