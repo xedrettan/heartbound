@@ -255,9 +255,37 @@ class HeartboundDatabase {
   // Fetch platform-level configuration from Firestore (config/platform)
   // Called by app.js after initConnection(). Non-blocking.
   async loadPlatformConfig() {
-    if (!this.firestore) return null;
+    let targetFirestore = this.firestore;
+    
+    // If not connected to any cloud database (Sandbox mode), bootstrap a background
+    // connection to the default platform database to fetch global settings (like Maintenance Mode)
+    if (!targetFirestore) {
+      try {
+        console.log("[HB] Sandbox mode: Bootstrapping background connection to default platform database to fetch configurations...");
+        const bootstrapConfig = {
+          apiKey: "AIzaSyBdifZtIlVrKtnZxkHBycvMNRGpnxs5Weo",
+          authDomain: "heartbound-fb84e.firebaseapp.com",
+          projectId: "heartbound-fb84e",
+          storageBucket: "heartbound-fb84e.appspot.com",
+          appId: "1:1057660034330:web:e30c2c4338247d8de220a3"
+        };
+        
+        // Dynamically import helpers to prevent duplicate setup collisions
+        const { getApps, initializeApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
+        const { getFirestore } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+        
+        const apps = getApps();
+        const tempApp = apps.length > 0 ? apps[0] : initializeApp(bootstrapConfig);
+        targetFirestore = getFirestore(tempApp);
+      } catch (e) {
+        console.warn("[HB] Failed to bootstrap platform config connection:", e);
+        return null;
+      }
+    }
+
+    if (!targetFirestore) return null;
     try {
-      const configRef = doc(this.firestore, "config", "platform");
+      const configRef = doc(targetFirestore, "config", "platform");
       const snap = await getDoc(configRef);
       if (snap.exists()) {
         this.platformConfig = snap.data();
