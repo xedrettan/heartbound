@@ -1,6 +1,6 @@
 /* Heartbound Database abstraction layer - Multi-Cloud (LocalStorage, Firebase & Supabase) */
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { initializeApp, getApps, deleteApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
   getFirestore, 
   doc, 
@@ -255,9 +255,33 @@ class HeartboundDatabase {
   // Fetch platform-level configuration from Firestore (config/platform)
   // Called by app.js after initConnection(). Non-blocking.
   async loadPlatformConfig() {
-    if (!this.firestore) return null;
+    let targetFirestore = this.firestore;
+    
+    // If not connected to any cloud database (Sandbox mode), bootstrap a background
+    // connection to the default platform database to fetch global settings (like Maintenance Mode)
+    if (!targetFirestore) {
+      try {
+        console.log("[HB] Sandbox mode: Bootstrapping background connection to default platform database to fetch configurations...");
+        const bootstrapConfig = {
+          apiKey: "AIzaSyBdifZtIlVrKtnZxkHBycvMNRGpnxs5Weo",
+          authDomain: "heartbound-fb84e.firebaseapp.com",
+          projectId: "heartbound-fb84e",
+          storageBucket: "heartbound-fb84e.appspot.com",
+          appId: "1:1057660034330:web:e30c2c4338247d8de220a3"
+        };
+        
+        const apps = getApps();
+        const tempApp = apps.find(app => app.name === "heartbound-platform") || initializeApp(bootstrapConfig, "heartbound-platform");
+        targetFirestore = getFirestore(tempApp);
+      } catch (e) {
+        console.warn("[HB] Failed to bootstrap platform config connection:", e);
+        return null;
+      }
+    }
+
+    if (!targetFirestore) return null;
     try {
-      const configRef = doc(this.firestore, "config", "platform");
+      const configRef = doc(targetFirestore, "config", "platform");
       const snap = await getDoc(configRef);
       if (snap.exists()) {
         this.platformConfig = snap.data();
@@ -300,7 +324,6 @@ class HeartboundDatabase {
     this.unsubscribeAll();
     if (this.firebaseApp) {
       try {
-        const { deleteApp } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js");
         await deleteApp(this.firebaseApp);
         console.log("Firebase App destroyed successfully.");
       } catch (e) {
@@ -1154,7 +1177,54 @@ class HeartboundDatabase {
       let events = JSON.parse(localStorage.getItem("hb_sandbox_events")) || [];
       events = events.filter(item => item.id !== id);
       localStorage.setItem("hb_sandbox_events", JSON.stringify(events));
-      window.dispatchEvent(new Event("hb_local_events_updated"));
+    }
+  }
+
+  async updateEvent(id, evt) {
+    if (this.isCloudMode() && this.isPaired()) {
+      const provider = this.getCloudProvider();
+      if (provider === "firebase") {
+        const payload = {
+          title: evt.title,
+          date: evt.date,
+          notes: evt.notes
+        };
+        if (evt.targetRole) {
+          payload.targetRole = evt.targetRole;
+        }
+        const docRef = doc(this.firestore, "spaces", this.activeSpaceId, "celebrations", id);
+        await updateDoc(docRef, payload);
+        await this.refreshEvents();
+      } else if (provider === "supabase") {
+        const payload = {
+          title: evt.title,
+          date: evt.date,
+          notes: evt.notes
+        };
+        if (evt.targetRole) {
+          payload.target_role = evt.targetRole;
+        }
+        const { error } = await this.supabaseClient
+          .from("celebrations")
+          .update(payload)
+          .eq("id", id);
+        if (error) throw error;
+        await this.refreshEvents();
+      }
+    } else {
+      // Local
+      const events = JSON.parse(localStorage.getItem("hb_sandbox_events")) || [];
+      const index = events.findIndex(e => e.id === id);
+      if (index !== -1) {
+        events[index].title = evt.title;
+        events[index].date = evt.date;
+        events[index].notes = evt.notes;
+        if (evt.targetRole) {
+          events[index].targetRole = evt.targetRole;
+        }
+        localStorage.setItem("hb_sandbox_events", JSON.stringify(events));
+        window.dispatchEvent(new Event("hb_local_events_updated"));
+      }
     }
   }
 

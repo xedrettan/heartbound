@@ -1495,7 +1495,8 @@ button, input, select, textarea {
   gap: 10px;
 }
 
-.adv-delete-btn {
+.adv-delete-btn,
+.adv-edit-btn {
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -1507,6 +1508,14 @@ button, input, select, textarea {
 
 .adv-delete-btn:hover {
   color: #ff4757;
+}
+
+.adv-edit-btn:hover {
+  color: var(--accent-teal);
+}
+
+.celebration-card .adv-edit-btn:hover {
+  color: var(--primary-color);
 }
 
 .adv-desc {
@@ -1564,10 +1573,39 @@ button, input, select, textarea {
 .checklist-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   font-size: 13px;
   cursor: pointer;
   user-select: none;
+}
+
+.checklist-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.checklist-item-del-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  opacity: 0.4;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 12px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checklist-item-del-btn:hover {
+  color: #ff5e5e;
+  opacity: 1;
+  background: rgba(255, 94, 94, 0.15);
 }
 
 .checklist-item input[type="checkbox"] {
