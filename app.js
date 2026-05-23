@@ -1324,7 +1324,11 @@ function initSettingsAndForms() {
     const customDbAllowed = !db.platformConfig || db.platformConfig.allowCustomDb !== false;
     
     // Determine if using default platform DB or sandbox (checking projectId)
-    const isUsingDefaultDb = db.dbConfig && (db.dbConfig.projectId === "heartbound-fb84e" || !db.dbConfig.projectId);
+    const isUsingDefaultDb = db.dbConfig && (
+      db.dbConfig.projectId === "heartbound-fb84e" || 
+      db.dbConfig.projectId === "heartbound-dev" || 
+      !db.dbConfig.projectId
+    );
 
     if (db.dbConfig && !isUsingDefaultDb) {
       // ONLY populate fields if it's a true custom DB
