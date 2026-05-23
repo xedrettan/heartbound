@@ -1319,7 +1319,15 @@ function initSettingsAndForms() {
 
   const openSyncModal = () => {
     const providerSelect = document.getElementById("db-provider");
-    if (db.dbConfig) {
+    const cloudConfigForm = document.getElementById("form-cloud-config");
+    const defaultDbBanner = document.getElementById("default-db-status");
+    const customDbAllowed = !db.platformConfig || db.platformConfig.allowCustomDb !== false;
+    
+    // Determine if using default platform DB or sandbox (checking projectId)
+    const isUsingDefaultDb = db.dbConfig && (db.dbConfig.projectId === "heartbound-fb84e" || !db.dbConfig.projectId);
+
+    if (db.dbConfig && !isUsingDefaultDb) {
+      // ONLY populate fields if it's a true custom DB
       const provider = db.dbConfig.provider || "firebase";
       if (providerSelect) providerSelect.value = provider;
       toggleDbInputs(provider);
@@ -1338,8 +1346,15 @@ function initSettingsAndForms() {
         if (sbKey) sbKey.value = db.dbConfig.supabaseKey || "";
       }
     } else {
+      // Clear fields for default / sandbox
       if (providerSelect) providerSelect.value = "firebase";
       toggleDbInputs("firebase");
+      const apiKey = document.getElementById("db-apikey");
+      const projectId = document.getElementById("db-projectid");
+      const appId = document.getElementById("db-appid");
+      if (apiKey) apiKey.value = "";
+      if (projectId) projectId.value = "";
+      if (appId) appId.value = "";
     }
     
     // Dynamically update copy buttons labels based on the active session role
@@ -1362,10 +1377,28 @@ function initSettingsAndForms() {
       }
     }
 
-    // Gate Cloud DB credentials section based on platform allowCustomDb flag
-    const cloudConfigForm = document.getElementById("form-cloud-config");
-    const customDbAllowed = !db.platformConfig || db.platformConfig.allowCustomDb !== false;
-    if (cloudConfigForm) cloudConfigForm.style.display = customDbAllowed ? "" : "none";
+    if (cloudConfigForm) {
+      if (!customDbAllowed) {
+        cloudConfigForm.style.display = "none";
+      } else if (isUsingDefaultDb) {
+        cloudConfigForm.classList.add("hidden");
+        if (defaultDbBanner) defaultDbBanner.classList.remove("hidden");
+      } else {
+        cloudConfigForm.classList.remove("hidden");
+        if (defaultDbBanner) defaultDbBanner.classList.add("hidden");
+      }
+    }
+    
+    // Wire up the button to show the custom form manually
+    const btnShowCustom = document.getElementById("btn-show-custom-db");
+    if (btnShowCustom) {
+      btnShowCustom.onclick = () => {
+        if (defaultDbBanner) defaultDbBanner.classList.add("hidden");
+        if (cloudConfigForm) {
+          cloudConfigForm.classList.remove("hidden");
+        }
+      };
+    }
 
     if (cloudModal) cloudModal.classList.remove("hidden");
   };

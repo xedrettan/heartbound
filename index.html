@@ -408,7 +408,18 @@
           By pasting your Firebase credentials below, you can activate the shared mode and link devices with your significant other!
         </p>
 
-        <!-- Firestore Configuration Settings Form -->
+        <!-- Default DB Banner -->
+        <div id="default-db-status" class="info-banner hidden" style="margin-bottom: 20px;">
+          <i class="fa-solid fa-cloud-check icon-rose" style="font-size: 1.2rem;"></i>
+          <div>
+            <strong style="color: #fff; font-size: 0.95rem;">Using Default Platform Database</strong>
+            <p style="color: rgba(255,255,255,0.65); font-size: 0.85rem; margin-top: 4px;">
+              Your space is hosted on the secure Heartbound cloud. No configuration needed!
+            </p>
+          </div>
+          <button type="button" class="btn-secondary" id="btn-show-custom-db" style="margin-top: 12px; font-size: 0.8rem; padding: 6px 12px;">Setup Custom Database instead</button>
+        </div>
+
         <!-- Cloud Database Configuration Settings Form -->
         <form id="form-cloud-config" class="modal-form">
           <div class="form-group">
