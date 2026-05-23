@@ -227,9 +227,9 @@ class HeartboundDatabase {
           // Development Database
           this.dbConfig = {
             provider: "firebase",
-            apiKey: "AIzaSyAcAHDO1-9IIEJSmeOrt-AhJ7aFuHp_cjQ",
-            projectId: "heartbound-dev",
-            appId: "1:644870081451:web:d42f68c8ba36156902a0ee"
+            apiKey: "",
+            projectId: "",
+            appId: ""
           };
         } else {
           // Production Database
