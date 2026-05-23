@@ -37,6 +37,7 @@ const BOOTSTRAP_CONFIG = {
 let firebaseApp    = null;
 let firestore      = null;
 let platformConfig = {};
+let activeDbConfig = {};
 
 // ── INIT ───────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", async () => {
@@ -154,15 +155,35 @@ async function connectFirebase() {
   try {
     setConnectionStatus("connecting", "Connecting…");
 
+    // Dynamically read active client config from localStorage (same origin) or fallback to bootstrap
+    let activeConfig = null;
+    try {
+      const localCfg = JSON.parse(localStorage.getItem("hb_db_config"));
+      if (localCfg && localCfg.provider === "firebase" && localCfg.apiKey && localCfg.projectId && localCfg.appId) {
+        activeConfig = {
+          apiKey: localCfg.apiKey,
+          authDomain: `${localCfg.projectId}.firebaseapp.com`,
+          projectId: localCfg.projectId,
+          storageBucket: `${localCfg.projectId}.appspot.com`,
+          appId: localCfg.appId
+        };
+        console.log("[Admin] Using active local storage Firebase config:", activeConfig.projectId);
+      }
+    } catch (e) {
+      console.warn("[Admin] Failed to parse local config, using default bootstrap:", e);
+    }
+
+    activeDbConfig = activeConfig || BOOTSTRAP_CONFIG;
+
     const apps  = getApps();
-    firebaseApp = apps.length > 0 ? apps[0] : initializeApp(BOOTSTRAP_CONFIG);
+    firebaseApp = apps.length > 0 ? apps[0] : initializeApp(activeDbConfig);
     firestore   = getFirestore(firebaseApp);
 
     setConnectionStatus("connected", "Connected");
 
     // Update overview info panel
     document.getElementById("info-provider").textContent   = "Firebase Firestore";
-    document.getElementById("info-project-id").textContent = BOOTSTRAP_CONFIG.projectId;
+    document.getElementById("info-project-id").textContent = activeDbConfig.projectId;
     document.getElementById("info-connection").textContent = "✓ Active";
     document.getElementById("info-connection").classList.add("connected");
 
@@ -276,10 +297,10 @@ function populateDatabaseSection() {
   const container = document.getElementById("db-active-config");
   const rows = [
     { key: "Provider",    val: "Firebase Firestore" },
-    { key: "Project ID",  val: BOOTSTRAP_CONFIG.projectId },
-    { key: "Auth Domain", val: BOOTSTRAP_CONFIG.authDomain },
-    { key: "API Key",     val: BOOTSTRAP_CONFIG.apiKey.substring(0, 10) + "••••••••••" },
-    { key: "App ID",      val: BOOTSTRAP_CONFIG.appId.substring(0, 14) + "••••" }
+    { key: "Project ID",  val: activeDbConfig.projectId || "None" },
+    { key: "Auth Domain", val: activeDbConfig.authDomain || "None" },
+    { key: "API Key",     val: activeDbConfig.apiKey ? (activeDbConfig.apiKey.substring(0, 10) + "••••••••••") : "None" },
+    { key: "App ID",      val: activeDbConfig.appId ? (activeDbConfig.appId.substring(0, 14) + "••••") : "None" }
   ];
   container.innerHTML = rows.map(r => `
     <div class="db-detail-row">
