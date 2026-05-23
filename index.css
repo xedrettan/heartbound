@@ -1819,7 +1819,11 @@ button, input, select, textarea {
 
   /* Automatically minimize empty columns to save screen height on mobile */
   .adventures-column.minimized {
+    min-height: auto !important;
     padding-bottom: 12px;
+  }
+  .adventures-column.minimized .column-header {
+    margin-bottom: 0 !important;
   }
   .adventures-column.minimized .adventures-list,
   .adventures-column.minimized .empty-column-state {
