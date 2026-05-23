@@ -219,14 +219,27 @@ class HeartboundDatabase {
     try {
       this.dbConfig = JSON.parse(localStorage.getItem("hb_db_config"));
       
-      // Default fallback Firebase config for all users
+      // Dynamic fallback Firebase config based on environment
       if (!this.dbConfig) {
-        this.dbConfig = {
-          provider: "firebase",
-          apiKey: "AIzaSyBdifZtIlVrKtnZxkHBycvMNRGpnxs5Weo",
-          projectId: "heartbound-fb84e",
-          appId: "1:1057660034330:web:e30c2c4338247d8de220a3"
-        };
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '';
+        
+        if (isLocalhost) {
+          // Development Database
+          this.dbConfig = {
+            provider: "firebase",
+            apiKey: "AIzaSyAcAHDO1-9IIEJSmeOrt-AhJ7aFuHp_cjQ",
+            projectId: "heartbound-dev",
+            appId: "1:644870081451:web:d42f68c8ba36156902a0ee"
+          };
+        } else {
+          // Production Database
+          this.dbConfig = {
+            provider: "firebase",
+            apiKey: "AIzaSyBdifZtIlVrKtnZxkHBycvMNRGpnxs5Weo",
+            projectId: "heartbound-fb84e",
+            appId: "1:1057660034330:web:e30c2c4338247d8de220a3"
+          };
+        }
         localStorage.setItem("hb_db_config", JSON.stringify(this.dbConfig));
       }
       
